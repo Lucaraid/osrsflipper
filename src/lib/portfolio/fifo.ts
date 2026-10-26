@@ -107,7 +107,7 @@ export function computeFifo(trade: Trade): TradeSummary {
     }
     const matched = s.quantity - need;
     if (need > 0) {
-      errors.push(`Verkauf vom ${new Date(s.date).toISOString().slice(0, 10)}: ${need} Stück mehr verkauft als zu diesem Zeitpunkt vorhanden.`);
+      errors.push(`Sale on ${new Date(s.date).toISOString().slice(0, 10)}: sold ${need} more than you held at that time.`);
     }
     const { tax, actual } = saleTax(s, trade.itemId);
     // Bei Überverkauf nur den gedeckten Anteil realisieren (anteilige Erlöse, Steuer und Gebühren)

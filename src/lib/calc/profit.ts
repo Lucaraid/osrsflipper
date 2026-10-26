@@ -75,12 +75,12 @@ export function calculateFlip(input: FlipInput, rules: TaxRules = TAX_RULES): Fl
   if (sell == null) issues.push({ code: "missing", field: "sellPrice" });
   if (qty == null) issues.push({ code: "missing", field: "quantity" });
   if (buy != null && (buy < 1 || buy > MAX_GE_PRICE))
-    issues.push({ code: "invalid", field: "buyPrice", message: `Kaufpreis muss zwischen 1 und ${MAX_GE_PRICE} gp liegen.` });
+    issues.push({ code: "invalid", field: "buyPrice", message: `Buy price must be between 1 and ${MAX_GE_PRICE} gp.` });
   if (sell != null && (sell < 1 || sell > MAX_GE_PRICE))
-    issues.push({ code: "invalid", field: "sellPrice", message: `Verkaufspreis muss zwischen 1 und ${MAX_GE_PRICE} gp liegen.` });
-  if (qty != null && qty < 1) issues.push({ code: "invalid", field: "quantity", message: "Stückzahl muss mindestens 1 sein." });
-  if (otherCosts < 0) issues.push({ code: "invalid", field: "otherCosts", message: "Sonstige Kosten dürfen nicht negativ sein." });
-  if (actualTax != null && actualTax < 0) issues.push({ code: "invalid", field: "actualTax", message: "Steuer darf nicht negativ sein." });
+    issues.push({ code: "invalid", field: "sellPrice", message: `Sell price must be between 1 and ${MAX_GE_PRICE} gp.` });
+  if (qty != null && qty < 1) issues.push({ code: "invalid", field: "quantity", message: "Quantity must be at least 1." });
+  if (otherCosts < 0) issues.push({ code: "invalid", field: "otherCosts", message: "Other costs can’t be negative." });
+  if (actualTax != null && actualTax < 0) issues.push({ code: "invalid", field: "actualTax", message: "Tax can’t be negative." });
 
   const b = buy ?? 0;
   const s = sell ?? 0;

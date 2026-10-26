@@ -12,27 +12,27 @@ export function FolderSettingsCard() {
   const { status, folderName, lastSavedAt, lastError, saving, connect, reconnect, disconnect, saveNow } = useFolderStore();
   const now = useNow(10_000);
   return (
-    <Card id="speicherort" className="lg:col-span-2">
-      <CardHeader title="Speicherort für Trades & Daten" description="Speichere deine Trades in einem Ordner deiner Wahl auf deinem Computer (z. B. D:\OSRS\Trades oder ein OneDrive-/Dropbox-Ordner)." />
+    <Card id="storage" className="lg:col-span-2">
+      <CardHeader title="Where your trades are saved" description="Save your trades in a folder of your choice on your computer (e.g. D:\OSRS\Trades or a OneDrive/Dropbox folder)." />
       <CardBody className="space-y-3 text-sm">
         {status === "unsupported" && (
           <InfoNote tone="warn">
-            Dieser Browser unterstützt das Speichern in einem eigenen Ordner nicht. Bitte <b>Google Chrome</b> oder <b>Microsoft Edge</b> verwenden. Bis dahin liegen die Daten im Browser-Speicher (Export/Import unten).
+            This browser can’t save to a folder of your choice. Please use <b>Google Chrome</b> or <b>Microsoft Edge</b>. Until then your data stays in browser storage (export/import below).
           </InfoNote>
         )}
-        {status === "none" && <p className="text-muted">Aktuell werden die Daten nur im Speicher dieses Browsers abgelegt.</p>}
+        {status === "none" && <p className="text-muted">Your data is currently only stored in this browser.</p>}
         {status === "connected" && (
           <div className="flex flex-wrap items-center gap-2" data-testid="folder-connected">
             <FolderOpen className="size-4 text-pos" />
             <span>
-              Verbunden mit Ordner <b>„{folderName}“</b> · zuletzt gespeichert {lastSavedAt ? ago((now - lastSavedAt) / 1000) : "–"}
-              {saving ? " · speichert…" : ""}
+              Connected to folder <b>“{folderName}”</b> · last saved {lastSavedAt ? ago((now - lastSavedAt) / 1000) : "–"}
+              {saving ? " · saving…" : ""}
             </span>
           </div>
         )}
         {status === "needs-permission" && (
           <InfoNote tone="warn">
-            Ordner „{folderName}“ ist gewählt, aber der Browser braucht nach einem Neustart deine Bestätigung, um wieder darauf zuzugreifen. Bis dahin wird nicht im Ordner gespeichert.
+            Folder “{folderName}” is selected, but after a restart the browser needs your permission to access it again. Until then nothing is saved to the folder.
           </InfoNote>
         )}
         {lastError && <ErrorNote>{lastError}</ErrorNote>}
@@ -40,39 +40,39 @@ export function FolderSettingsCard() {
         <div className="flex flex-wrap gap-2">
           {status !== "unsupported" && (
             <Button variant={status === "connected" ? "outline" : "primary"} onClick={() => void connect()} data-testid="folder-pick">
-              <FolderOpen /> {status === "connected" ? "Anderen Ordner wählen" : "Ordner wählen"}
+              <FolderOpen /> {status === "connected" ? "Choose another folder" : "Choose folder"}
             </Button>
           )}
           {status === "needs-permission" && (
             <Button variant="primary" onClick={() => void reconnect()}>
-              <FolderSync /> Zugriff erlauben
+              <FolderSync /> Allow access
             </Button>
           )}
           {status === "error" && folderName && (
             <Button variant="outline" onClick={() => void reconnect()}>
-              <FolderSync /> Erneut versuchen
+              <FolderSync /> Try again
             </Button>
           )}
           {status === "connected" && (
             <Button variant="outline" onClick={() => void saveNow()}>
-              <Save /> Jetzt speichern
+              <Save /> Save now
             </Button>
           )}
           {(status === "connected" || status === "needs-permission" || status === "error") && folderName && (
             <Button variant="ghost" onClick={() => void disconnect()}>
-              <Unplug /> Ordner trennen
+              <Unplug /> Disconnect folder
             </Button>
           )}
         </div>
         <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted">
           <li>
-            <code>{DATA_FILE}</code> – alle Trades, Kapitalbuchungen, Watchlist, Alarme und Einstellungen. Wird bei jeder Änderung automatisch aktualisiert und beim Start geladen.
+            <code>{DATA_FILE}</code> – all trades, capital entries, watchlist and settings. Updated automatically on every change and loaded on start.
           </li>
           <li>
-            <code>{CSV_FILE}</code> – lesbare Liste aller Käufe/Verkäufe mit Steuer und realisiertem Gewinn (für Excel). Nur Ausgabe – Änderungen darin werden nicht eingelesen.
+            <code>{CSV_FILE}</code> – readable list of all buys/sells with tax and realised profit (for Excel). Output only – edits in it are not read back.
           </li>
-          <li>Liegt der Ordner in OneDrive/Dropbox, kannst du dieselben Daten auf mehreren PCs nutzen (nicht gleichzeitig bearbeiten).</li>
-          <li>Funktioniert in Chrome und Edge. Chrome fragt nach einem Neustart evtl. erneut nach Zugriff – „Bei jedem Besuch erlauben“ wählen, dann entfällt das.</li>
+          <li>If the folder is in OneDrive/Dropbox you can use the same data on several PCs (don’t edit at the same time).</li>
+          <li>Works in Chrome and Edge. After a restart Chrome may ask for access again – choose “Allow on every visit” to skip that.</li>
         </ul>
       </CardBody>
     </Card>

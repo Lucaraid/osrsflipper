@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-const badgeVariants = cva("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium leading-none whitespace-nowrap", {
+const badgeVariants = cva("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none whitespace-nowrap", {
   variants: {
     tone: {
       neutral: "bg-surface-3 text-muted",
@@ -10,7 +10,7 @@ const badgeVariants = cva("inline-flex items-center gap-1 rounded px-1.5 py-0.5 
       neg: "bg-neg-soft text-neg",
       warn: "bg-warn-soft text-warn",
       accent: "bg-accent-soft text-accent",
-      info: "bg-surface-3 text-info",
+      info: "bg-info-soft text-info",
     },
   },
   defaultVariants: { tone: "neutral" },

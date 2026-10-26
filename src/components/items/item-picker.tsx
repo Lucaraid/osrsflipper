@@ -8,7 +8,7 @@ import { searchItems } from "@/lib/search/search";
 import { cn } from "@/lib/utils";
 
 /** Combobox zur Item-Auswahl (Name oder ID), sucht lokal. */
-export function ItemPicker({ value, onChange, placeholder = "Item suchen…", id, testId }: { value: number | null; onChange: (item: ItemMeta | null) => void; placeholder?: string; id?: string; testId?: string }) {
+export function ItemPicker({ value, onChange, placeholder = "Search items…", id, testId }: { value: number | null; onChange: (item: ItemMeta | null) => void; placeholder?: string; id?: string; testId?: string }) {
   const index = useSearchIndex();
   const items = useItemMap();
   const selected = value != null ? items.get(value) : undefined;
@@ -65,7 +65,7 @@ export function ItemPicker({ value, onChange, placeholder = "Item suchen…", id
       </div>
       {open && q && (
         <ul id={listId} className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-xl" role="listbox">
-          {results.length === 0 && <li className="px-3 py-1.5 text-xs text-muted">Keine Treffer</li>}
+          {results.length === 0 && <li className="px-3 py-1.5 text-xs text-muted">No matches</li>}
           {results.map((it, i) => (
             <li key={it.id} role="option" aria-selected={i === active}>
               <button

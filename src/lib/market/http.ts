@@ -6,7 +6,7 @@ export function rateLimited(req: Request): NextResponse | null {
   const r = checkRateLimit(clientKey(req.headers));
   if (r.ok) return null;
   return NextResponse.json(
-    { error: "Zu viele Anfragen. Bitte kurz warten." },
+    { error: "Too many requests. Please wait a moment." },
     { status: 429, headers: { "Retry-After": String(Math.ceil(r.resetMs / 1000)) } },
   );
 }

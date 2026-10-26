@@ -23,7 +23,7 @@ export function DialogContent({ title, description, children, className }: { tit
             <D.Title className="text-base font-semibold">{title}</D.Title>
             {description ? <D.Description className="text-xs text-muted">{description}</D.Description> : <D.Description className="sr-only">{title}</D.Description>}
           </div>
-          <D.Close className="rounded p-1 text-muted hover:bg-surface-2 hover:text-text" aria-label="Schliessen">
+          <D.Close className="rounded p-1 text-muted hover:bg-surface-2 hover:text-text" aria-label="Close">
             <X className="size-4" />
           </D.Close>
         </div>

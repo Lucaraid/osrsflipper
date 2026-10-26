@@ -3,7 +3,7 @@
 const intFmt = new Intl.NumberFormat("de-CH", { maximumFractionDigits: 0 });
 const pctFmt = new Intl.NumberFormat("de-CH", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 2 });
 
-export const NA = "Nicht verfügbar";
+export const NA = "Not available";
 
 export function gp(v: number | null | undefined, opts: { sign?: boolean } = {}): string {
   if (v == null || !Number.isFinite(v)) return NA;
@@ -41,12 +41,12 @@ export function num(v: number | null | undefined, digits = 0): string {
 export function ago(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds)) return NA;
   const s = Math.max(0, Math.round(seconds));
-  if (s < 60) return `vor ${s} s`;
+  if (s < 60) return `${s} s ago`;
   const m = Math.round(s / 60);
-  if (m < 60) return `vor ${m} min`;
+  if (m < 60) return `${m} min ago`;
   const h = Math.round(m / 6) / 10;
-  if (h < 48) return `vor ${num(h, 1)} h`;
-  return `vor ${Math.round(h / 24)} Tagen`;
+  if (h < 48) return `${num(h, 1)} h ago`;
+  return `${Math.round(h / 24)} days ago`;
 }
 
 export function agoFromUnix(unixSec: number | null | undefined, nowMs = Date.now()): string {
@@ -56,12 +56,12 @@ export function agoFromUnix(unixSec: number | null | undefined, nowMs = Date.now
 
 export function dateTime(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms)) return NA;
-  return new Intl.DateTimeFormat("de-CH", { dateStyle: "short", timeStyle: "short" }).format(new Date(ms));
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "short", timeStyle: "short" }).format(new Date(ms));
 }
 
 export function date(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms)) return NA;
-  return new Intl.DateTimeFormat("de-CH", { dateStyle: "medium" }).format(new Date(ms));
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(ms));
 }
 
 export function duration(ms: number | null | undefined): string {
@@ -69,7 +69,7 @@ export function duration(ms: number | null | undefined): string {
   const h = ms / 3_600_000;
   if (h < 1) return `${Math.max(1, Math.round(ms / 60_000))} min`;
   if (h < 48) return `${num(h, 1)} h`;
-  return `${num(h / 24, 1)} Tage`;
+  return `${num(h / 24, 1)} days`;
 }
 
 export function iconUrl(icon: string | null | undefined): string | null {

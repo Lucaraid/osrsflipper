@@ -72,11 +72,11 @@ describe("Ordner-Speicherung", () => {
     expect(csv.startsWith("﻿")).toBe(true);
     const lines = csv.slice(1).trim().split("\r\n");
     expect(lines).toHaveLength(3);
-    expect(lines[0]).toContain("Trade-ID;Item;Item-ID;Typ");
-    expect(lines[1]).toContain(";Kauf;");
+    expect(lines[0]).toContain("Trade ID;Item;Item ID;Type");
+    expect(lines[1]).toContain(";Buy;");
     expect(lines[1]).toContain(";-10000;");
     // Verkauf: 4 × 1100 − 4 × 22 = 4312 netto, realisiert 4 × (1100 − 22 − 1000) = 312
-    expect(lines[2]).toContain(";Verkauf;");
+    expect(lines[2]).toContain(";Sale;");
     expect(lines[2]).toContain(";88;4312;312;");
     expect(lines[2]).toContain('"Notiz; mit ""Zeichen"""');
   });

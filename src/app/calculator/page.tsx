@@ -41,10 +41,10 @@ function CalculatorInner() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Profit-Rechner" description="Präzise Flip-Berechnung inkl. GE-Steuer, Break-even und Kapitalbedarf." />
+      <PageHeader title="Profit Calculator" description="Exact flip maths including GE tax, break-even and capital needed." />
       <Card className="mb-3">
         <CardBody className="grid gap-3 sm:grid-cols-[minmax(0,320px)_1fr] sm:items-end">
-          <Field label="Item (optional – für Steuerausnahmen und Limit)">
+          <Field label="Item (optional – for tax exemptions and buy limit)">
             <ItemPicker
               value={itemId}
               onChange={(it) => router.replace(it ? `/calculator?id=${it.id}` : "/calculator")}
@@ -54,20 +54,20 @@ function CalculatorInner() {
           {meta && (
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
               <span>
-                Limit: <span className="text-text">{meta.limit != null ? gp(meta.limit) : "Nicht verfügbar"}</span>
+                Limit: <span className="text-text">{meta.limit != null ? gp(meta.limit) : "Not available"}</span>
               </span>
               {row && (
                 <>
                   <span>
-                    Letzter Instant-Buy: <span className="num text-text">{gp(row.high)}</span> (<Age seconds={row.highTime != null ? now / 1000 - row.highTime : null} />)
+                    Last instant-buy: <span className="num text-text">{gp(row.high)}</span> (<Age seconds={row.highTime != null ? now / 1000 - row.highTime : null} />)
                   </span>
                   <span>
-                    Letzter Instant-Sell: <span className="num text-text">{gp(row.low)}</span> (<Age seconds={row.lowTime != null ? now / 1000 - row.lowTime : null} />)
+                    Last instant-sell: <span className="num text-text">{gp(row.low)}</span> (<Age seconds={row.lowTime != null ? now / 1000 - row.lowTime : null} />)
                   </span>
                 </>
               )}
               <Link href={`/items/${meta.id}`} className="text-accent underline">
-                Item-Details
+                Item details
               </Link>
             </div>
           )}
@@ -85,12 +85,12 @@ function CalculatorInner() {
             onClick={() => setEditing(prepareTrade(trades, meta, useCalcStore.getState().byItem[meta.id]))}
             data-testid="calc-create-trade"
           >
-            <Plus /> {findOpenTrade(trades, meta.id) ? "Verkauf erfassen" : "Trade erfassen"}
+            <Plus /> {findOpenTrade(trades, meta.id) ? "Log sale" : "Log trade"}
           </Button>
           <span className="text-xs text-muted">
             {findOpenTrade(trades, meta.id)
-              ? "Du hast noch offene Stück dieses Items – es wird ein Verkauf mit Verkaufspreis aus dem Rechner und der offenen Menge vorbereitet."
-              : "Übernimmt Kaufpreis und Stückzahl aus dem Rechner."}
+              ? "You still hold some of this item – a sale with the calculator’s sell price and your open quantity will be prepared."
+              : "Uses the buy price and quantity from the calculator."}
           </span>
         </div>
       )}

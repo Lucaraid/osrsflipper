@@ -1,6 +1,6 @@
 # OSRS GE Flipper
 
-Datenbasierter Trading-Assistent für den **Old School RuneScape Grand Exchange**: Flip-Scanner, Profit-Rechner mit verifizierter GE-Steuer, Item-Analyse mit interaktiven Charts, Marktanalyse mit Anomalieerkennung sowie ein vollständiger Trade-Tracker (FIFO, Teilverkäufe) mit Portfolio, Watchlist und Preisalarmen.
+Datenbasierter Trading-Assistent für den **Old School RuneScape Grand Exchange**: Flip-Scanner, Profit-Rechner mit verifizierter GE-Steuer, Item-Analyse mit interaktiven Charts sowie ein vollständiger Trade-Tracker (FIFO, Teilverkäufe) mit Portfolio und Watchlist.
 
 - **Datenquelle:** [OSRS Wiki Real-time Prices API v2](https://oldschool.runescape.wiki/w/RuneScape:Real-time_Prices). Es werden keine Preise erfunden. Schätzungen sind als solche gekennzeichnet.
 - **Kein Konto nötig:** Persönliche Daten bleiben lokal – in einem selbst gewählten Ordner (Chrome/Edge) oder im Browser-Speicher; Export/Import als JSON.
@@ -30,13 +30,12 @@ Datenbasierter Trading-Assistent für den **Old School RuneScape Grand Exchange*
 | **Top 10 Käufe** | Die 10 besten aktuellen Kauf-Kandidaten mit konkretem Kaufgebot, Verkaufspreis, Menge, Kapital und geschätztem Gewinn. Voraussetzung: genug **Handelsvolumen der letzten 24 h** (einstellbar: Mindeststückzahl auf der schwächeren Seite und Volumen ≥ x-fache Menge; ist die Menge zu gross, wird sie reduziert). Ein Klick erfasst das Kaufangebot direkt im Tracker. Zweiter Tab **High Value**: nur Items mit **≥ 2M gp Gewinn pro Trade** (einstellbar), Kapital pro Trade = Gesamtkapital, angepasste Volumen-Kriterien. |
 | **Dashboard** | Verfügbares/gebundenes Kapital, Portfoliowert (gesch.), realisierter/unrealisierter Gewinn, ROI, Erfolgsquote, Ø Gewinn/Flip, Ø Haltedauer, Kapitalverlauf, offene/abgeschlossene Trades, Watchlist, Top-Scanner-Ergebnisse, Warnungen zu veralteten Daten. Ohne Daten erscheint ein leerer Zustand ohne Beispielwerte. |
 | **Flip Scanner** | Alle ca. 4'500 gehandelten Items mit letzten Instant-Buy/-Sell-Preisen und deren Alter, geschätzten Kauf-/Verkaufspreisen, Nettomarge nach Steuer, ROI, Menge nach Kapital und Limit, Kapitalbedarf, Gewinn beim gewählten Kapital, Potenzial pro Limit, Volumen 1h/24h, Risiko, Datenqualität und einem transparenten Ranking mit Begründungen. 14 Filter, 9 Sortierungen, Teilallokation und speicherbare Filter-Presets. |
-| **Item Explorer & Detail** | Suche nach Name/ID mit Relevanz und Autovervollständigung (Strg/Cmd+K). Detailseite mit allen Preisindikatoren, interaktivem Chart (6h–1y, Zoom/Pan, Tooltip, Volumen, sichtbare Lücken), Marktindikatoren, Profit-Rechner, Datenqualität und eigener Trade-Historie. |
-| **Marktanalyse** | Stärkste Preisveränderungen, 1h vs. 24h, Volatilität, stabile Items, Aktivitätsausreisser, Margenänderungen, regelbasierte Anomalieerkennung, Strategie-Vergleich und Vergleich mehrerer Items. |
+| **Item-Detail** | Suche nach Name/ID mit Relevanz und Autovervollständigung (Strg/Cmd+K). Detailseite mit allen Preisindikatoren, interaktivem Chart (6h–1y, Zoom/Pan, Tooltip, Volumen, sichtbare Lücken), Marktindikatoren, Profit-Rechner, Datenqualität und eigener Trade-Historie. |
 | **Profit-Rechner** | Bruttogewinn, Umsatz, GE-Steuer (oder tatsächliche Steuer), Nettogewinn, ROI, Break-even-Preis, maximaler Kaufpreis für einen Zielgewinn, maximale Menge bei gegebenem Kapital, Kapitalbedarf. Eingaben im OSRS-Stil (`1.5m`, `250k`). |
 | **Flip-Historie** | Speicherung wahlweise in einem **Ordner deiner Wahl** auf dem eigenen Computer (`osrs-ge-flipper-daten.json` + `trades.csv` für Excel; Chrome/Edge). Trades mit mehreren Kaufchargen, Teilverkäufen, Gebühren, offenen Kaufangeboten, Notizen und Änderungshistorie. Gewinne nach FIFO, Überverkäufe werden blockiert. Filter nach Item, Status, Ergebnis und Datum. |
 | **Portfolio** | Kapitalbuchungen und manueller Abgleich, Cash/Reserve/Verfügbar/Gebunden ohne Doppelzählung, offene Positionen mit geschätztem Marktwert, Kapitalverteilung, Positionsregeln mit Warnungen (inkl. GE-Slots). |
-| **Watchlist & Alarme** | Favoriten, Notizen, Zielpreise, Zielmarge und Ziel-ROI. Lokale Preisalarme (Preis unter/über, Marge, Datenqualität) mit optionalen Browser-Benachrichtigungen. Alarme greifen **nur bei geöffneter Seite**. |
-| **Einstellungen** | Hell/Dunkel, Standardkapital, Über-/Unterbieten, GE-Slots, Grenzen für veraltete Daten, Positionsregeln, JSON-Export/-Import, Daten löschen. |
+| **Watchlist** | Favoriten, Notizen, Zielpreise, Zielmarge und Ziel-ROI. |
+| **Einstellungen** | Hell (Pergament-Braun wie das OSRS Wiki) / Dunkel, Standardkapital, Über-/Unterbieten, GE-Slots, JSON-Export/-Import, Daten löschen. |
 
 ## Schnellstart
 
@@ -95,7 +94,7 @@ src/
     market/                Wiki-Client, Cache, Parser, Aggregation, Service, Rate-Limit
     tax/                   Verifizierte GE-Steuerregeln (zentral) und Berechnung
     calc/                  Zentrale Flip-Berechnung (Profit, Break-even, Mengen)
-    analysis/              Datenqualität, Risiko, Scanner/Ranking, Indikatoren, Marktanalyse, Strategien
+    analysis/              Datenqualität, Risiko, Scanner/Ranking, Top 10, Indikatoren
     portfolio/             Zod-Schemas, FIFO, Portfolio und Zeitreihe
     storage/               IndexedDB, LocalStorage-Einstellungen, Backup (Export/Import)
     alerts/ search/

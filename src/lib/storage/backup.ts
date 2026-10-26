@@ -41,30 +41,30 @@ export function createBackup(data: Omit<Backup, "format" | "version" | "exported
 export type ImportResult = { ok: true; backup: Backup } | { ok: false; errors: string[] };
 
 export function parseBackup(text: string): ImportResult {
-  if (text.length > MAX_BACKUP_BYTES) return { ok: false, errors: ["Datei ist zu gross (max. 20 MB)."] };
+  if (text.length > MAX_BACKUP_BYTES) return { ok: false, errors: ["File is too large (max 20 MB)."] };
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, errors: ["Datei ist kein gültiges JSON."] };
+    return { ok: false, errors: ["File is not valid JSON."] };
   }
   if (typeof raw === "object" && raw !== null) {
     const r = raw as Record<string, unknown>;
-    if (r.format !== BACKUP_FORMAT) return { ok: false, errors: ["Unbekanntes Dateiformat – keine OSRS-GE-Flipper-Sicherung."] };
+    if (r.format !== BACKUP_FORMAT) return { ok: false, errors: ["Unknown file format – not an OSRS GE Flipper backup."] };
     if (typeof r.version === "number" && r.version > BACKUP_VERSION)
-      return { ok: false, errors: [`Sicherung stammt aus einer neueren Version (v${r.version}). Bitte App aktualisieren.`] };
+      return { ok: false, errors: [`Backup is from a newer version (v${r.version}). Please update the app.`] };
   }
   const parsed = BackupSchema.safeParse(raw);
   if (!parsed.success) {
     return {
       ok: false,
-      errors: parsed.error.issues.slice(0, 10).map((i) => `${i.path.join(".") || "(Wurzel)"}: ${i.message}`),
+      errors: parsed.error.issues.slice(0, 10).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
     };
   }
   const errors: string[] = [];
   const ids = new Set<string>();
   for (const t of parsed.data.trades) {
-    if (ids.has(t.id)) errors.push(`Doppelte Trade-ID ${t.id}.`);
+    if (ids.has(t.id)) errors.push(`Duplicate trade ID ${t.id}.`);
     ids.add(t.id);
     for (const e of validateTrade(t)) errors.push(`${t.itemName}: ${e}`);
   }

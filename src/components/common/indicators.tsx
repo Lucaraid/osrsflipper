@@ -1,4 +1,5 @@
 "use client";
+import { Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tip } from "@/components/ui/tooltip";
@@ -8,11 +9,14 @@ import type { RiskResult } from "@/lib/analysis/risk";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/state/settings";
 
+/** Anzeige-Labels (interne Werte bleiben deutsch, damit gespeicherte Daten gültig bleiben) */
+export const LEVEL_LABEL: Record<string, string> = { niedrig: "low", mittel: "medium", hoch: "high", unzureichend: "insufficient" };
+
 /** Kennzeichnung für Schätzwerte */
 export function Est({ className }: { className?: string }) {
   return (
-    <Tip content="Schätzung auf Basis zuletzt beobachteter Preise. Tatsächliche Ausführung nicht garantiert.">
-      <span className={cn("ml-0.5 cursor-help align-super text-[9px] font-semibold uppercase tracking-wide text-faint", className)}>gesch.</span>
+    <Tip content="Estimate based on the last observed prices. Actual fills are not guaranteed.">
+      <span className={cn("ml-0.5 cursor-help align-super text-[9px] font-semibold uppercase tracking-wide text-faint", className)}>est.</span>
     </Tip>
   );
 }
@@ -38,9 +42,9 @@ export function QualityBadge({ q, compact }: { q: QualityResult; compact?: boole
     <Tip
       content={
         <div className="space-y-1">
-          <div className="font-medium">Datenqualität {q.score}/100</div>
+          <div className="font-medium">Data quality {q.score}/100</div>
           <div className="text-muted">
-            Aktualität {q.components.freshness.toFixed(0)}/30 · Beide Seiten {q.components.bothSides}/10 · Aktivität 1h {q.components.activity}/15 · Historie {q.components.depth.toFixed(0)}/25 · Plausibilität {q.components.plausibility}/20
+            Freshness {q.components.freshness.toFixed(0)}/30 · Both sides {q.components.bothSides}/10 · Activity 1h {q.components.activity}/15 · History {q.components.depth.toFixed(0)}/25 · Plausibility {q.components.plausibility}/20
           </div>
           {q.notes.length > 0 && (
             <ul className="list-disc pl-4">
@@ -53,7 +57,7 @@ export function QualityBadge({ q, compact }: { q: QualityResult; compact?: boole
       }
     >
       <span className="cursor-help">
-        <Badge tone={tone}>{compact ? q.score : `${q.label} · ${q.score}`}</Badge>
+        <Badge tone={tone}>{compact ? q.score : `${LEVEL_LABEL[q.label] ?? q.label} · ${q.score}`}</Badge>
       </span>
     </Tip>
   );
@@ -65,16 +69,16 @@ export function RiskBadge({ r }: { r: RiskResult }) {
     <Tip
       content={
         <div>
-          <div className="font-medium">Risiko {r.score}/100 (historisch, regelbasiert)</div>
+          <div className="font-medium">Risk {r.score}/100 (historical, rule-based)</div>
           <div className="text-muted">
-            Volatilität {r.components.volatility.toFixed(0)}/30 · Liquidität {r.components.liquidity.toFixed(0)}/30 · Spread {r.components.spread.toFixed(0)}/20 · Daten {r.components.data.toFixed(0)}/20
+            Volatility {r.components.volatility.toFixed(0)}/30 · Liquidity {r.components.liquidity.toFixed(0)}/30 · Spread {r.components.spread.toFixed(0)}/20 · Data {r.components.data.toFixed(0)}/20
           </div>
-          <div className="mt-1 text-muted">Abdeckung (24h-Volumen ÷ Menge): {r.coverage == null ? NA : `${r.coverage.toFixed(1)}×`}</div>
+          <div className="mt-1 text-muted">Coverage (24h volume ÷ quantity): {r.coverage == null ? NA : `${r.coverage.toFixed(1)}×`}</div>
         </div>
       }
     >
       <span className="cursor-help">
-        <Badge tone={tone}>{r.riskClass}</Badge>
+        <Badge tone={tone}>{LEVEL_LABEL[r.riskClass] ?? r.riskClass}</Badge>
       </span>
     </Tip>
   );
@@ -90,7 +94,7 @@ export function Age({ seconds }: { seconds: number | null }) {
 
 export function Stat({ label, value, sub, hint, tone }: { label: string; value: ReactNode; sub?: ReactNode; hint?: string; tone?: "pos" | "neg" }) {
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-surface px-3 py-2.5">
+    <div className="min-w-0 rounded-xl border border-border bg-surface px-3 py-2.5 shadow-card">
       <div className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
         {hint ? (
           <Tip content={hint}>
@@ -100,7 +104,7 @@ export function Stat({ label, value, sub, hint, tone }: { label: string; value: 
           label
         )}
       </div>
-      <div className={cn("mt-0.5 truncate text-lg font-semibold num", tone === "pos" && "text-pos", tone === "neg" && "text-neg")}>{value}</div>
+      <div className={cn("mt-0.5 truncate text-xl font-bold num", tone === "pos" && "text-pos", tone === "neg" && "text-neg")}>{value}</div>
       {sub && <div className="truncate text-xs text-muted">{sub}</div>}
     </div>
   );
@@ -109,7 +113,8 @@ export function Stat({ label, value, sub, hint, tone }: { label: string; value: 
 export function EmptyState({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
-      <div className="text-sm font-medium">{title}</div>
+      <Sparkles className="size-6 text-gold" aria-hidden />
+      <div className="text-sm font-semibold">{title}</div>
       {children && <div className="max-w-md text-xs text-muted">{children}</div>}
       {action}
     </div>
@@ -117,11 +122,11 @@ export function EmptyState({ title, children, action }: { title: string; childre
 }
 
 export function ErrorNote({ children }: { children: ReactNode }) {
-  return <div className="rounded-md border border-neg/40 bg-neg-soft px-3 py-2 text-xs text-neg">{children}</div>;
+  return <div className="rounded-lg border border-neg/40 bg-neg-soft px-3 py-2 text-xs text-neg">{children}</div>;
 }
 
 export function InfoNote({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "warn" }) {
-  return <div className={cn("rounded-md border px-3 py-2 text-xs", tone === "warn" ? "border-warn/40 bg-warn-soft text-warn" : "border-border bg-surface-2 text-muted")}>{children}</div>;
+  return <div className={cn("rounded-lg border px-3 py-2 text-xs", tone === "warn" ? "border-warn/40 bg-warn-soft text-warn" : "border-info/30 bg-info-soft text-text")}>{children}</div>;
 }
 
 export function Skeleton({ className }: { className?: string }) {
@@ -132,7 +137,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
         {description && <p className="text-xs text-muted">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

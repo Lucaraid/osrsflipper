@@ -3,7 +3,6 @@ import { assessQuality } from "@/lib/analysis/quality";
 import { assessRisk } from "@/lib/analysis/risk";
 import { applyFilters, buildCandidate, sortCandidates, type ScannerContext } from "@/lib/analysis/scanner";
 import { computeIndicators, median } from "@/lib/analysis/indicators";
-import { computeMetrics, detectAnomalies } from "@/lib/analysis/market-analysis";
 import { categorize } from "@/lib/analysis/category";
 import { buildIndex, searchItems } from "@/lib/search/search";
 import { aggregateDay } from "@/lib/market/aggregate";
@@ -38,8 +37,8 @@ describe("Datenqualität", () => {
     const q = assessQuality(row({ highTime: NOW - 7200, low: null, lowTime: null, h1: null, d1: null }), NOW, T);
     expect(q.score).toBeLessThan(25);
     expect(q.label).toBe("unzureichend");
-    expect(q.notes.join(" ")).toMatch(/veraltet/);
-    expect(q.notes.join(" ")).toMatch(/Instant-Sell/);
+    expect(q.notes.join(" ")).toMatch(/stale/);
+    expect(q.notes.join(" ")).toMatch(/instant-sell/);
   });
   it("invertierter Spread ist nicht plausibel", () => {
     const q = assessQuality(row({ high: 900 }), NOW, T);
@@ -82,7 +81,7 @@ describe("Scanner", () => {
     const c = buildCandidate(meta(), row({ low: null, lowTime: null }), ctx);
     expect(c.netMargin).toBeNull();
     expect(c.score).toBe(0);
-    expect(c.reasons[0]?.text).toMatch(/Preisseite fehlt/);
+    expect(c.reasons[0]?.text).toMatch(/price side is missing/);
   });
   it("ohne bekanntes Limit wird nur das Kapital berücksichtigt", () => {
     const c = buildCandidate(meta({ limit: null }), row(), ctx);
@@ -125,29 +124,14 @@ describe("Aggregation & Indikatoren", () => {
   });
 });
 
-describe("Anomalien", () => {
-  it("erkennt starke Preisänderung und Aktivitätsanstieg, ignoriert dünn gehandelte Items", () => {
-    const items = [meta(), meta({ id: 2, name: "Thin" })];
-    const rows = [
-      row({ h1: { avgHigh: 1_300, avgLow: 1_250, volHigh: 2_000, volLow: 2_000 } }),
-      row({ id: 2, d1: day({ activeBlocks: 3 }), h1: { avgHigh: 5_000, avgLow: 5_000, volHigh: 1, volLow: 1 } }),
-    ];
-    const a = detectAnomalies(computeMetrics(items, rows));
-    const kinds = a.map((x) => x.kind);
-    expect(kinds).toContain("price_move");
-    expect(kinds).toContain("activity_high");
-    expect(a.every((x) => x.id === 4151)).toBe(true);
-  });
-});
-
 describe("Kategorien & Suche", () => {
   it("heuristische Kategorien", () => {
-    expect(categorize("Nature rune")).toBe("Runen");
-    expect(categorize("Prayer potion(4)")).toBe("Tränke");
-    expect(categorize("Ranarr seed")).toBe("Samen");
-    expect(categorize("Grimy ranarr weed")).toBe("Kräuter");
+    expect(categorize("Nature rune")).toBe("Runes");
+    expect(categorize("Prayer potion(4)")).toBe("Potions");
+    expect(categorize("Ranarr seed")).toBe("Seeds");
+    expect(categorize("Grimy ranarr weed")).toBe("Herbs");
     expect(categorize("Varrock teleport (tablet)")).toBe("Teleport");
-    expect(categorize("Old school bond")).toBe("Sonstiges");
+    expect(categorize("Old school bond")).toBe("Other");
   });
   it("Suche nach Name, Teilstring und ID mit Relevanz", () => {
     const idx = buildIndex([
@@ -164,7 +148,7 @@ describe("Kategorien & Suche", () => {
   });
 });
 
-describe("Konservative Marge & Strategien", () => {
+describe("Konservative Marge", () => {
   it("einzelner Ausreisser-Trade: konservative Marge klein, Ranking niedriger, Hinweis vorhanden", () => {
     // letzter Instant-Sell 250, aber Ø 1h Instant-Sell 474 → Ausreisser
     const outlier = row({ id: 9341, high: 500, low: 250, h1: { avgHigh: 485, avgLow: 474, volHigh: 2000, volLow: 2000 }, d1: day({ avgHigh: 504, avgLow: 491, avgSpread: 11 }) });
@@ -172,22 +156,12 @@ describe("Konservative Marge & Strategien", () => {
     expect(c.netMargin).toBe(499 - 9 - 251);
     // konservativ: Verkauf min(499, 485−1=484), Kauf max(251, 474+1=475) → 484 − 9 − 475 = 0
     expect(c.netMarginConservative).toBe(0);
-    expect(c.reasons.some((r) => /Ausreisser/.test(r.text))).toBe(true);
+    expect(c.reasons.some((r) => /outlier/.test(r.text))).toBe(true);
     const normal = buildCandidate(meta(), row(), ctx);
     expect(c.score).toBeLessThan(normal.score);
     // Standardfilter "nur plausible Margen" blendet ihn aus
     expect(applyFilters([c, normal], DEFAULT_FILTERS).map((x) => x.id)).toEqual([4151]);
     expect(applyFilters([c, normal], { ...DEFAULT_FILTERS, plausibleOnly: false })).toHaveLength(2);
-  });
-
-  it("Strategien berücksichtigen nur plausible, liquide Kandidaten und verteilen Kapital auf Slots", async () => {
-    const { STRATEGIES, summarizeStrategy } = await import("@/lib/analysis/strategy");
-    const good = buildCandidate(meta(), row(), ctx);
-    const thin = buildCandidate(meta({ id: 2, name: "Thin" }), row({ id: 2, d1: day({ volHigh: 5, volLow: 5 }) }), ctx);
-    const roi = summarizeStrategy(STRATEGIES[0]!, [good, thin], 1_000_000, 8);
-    expect(roi.picks.map((p) => p.id)).toEqual([4151]);
-    // 1 Pick → gesamtes Kapital, begrenzt durch Limit 70: 70 × min(77, konservativ 77)
-    expect(roi.estProfitSplit).toBe(70 * 77);
   });
 });
 

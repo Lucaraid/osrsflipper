@@ -55,7 +55,7 @@ export function parseMapping(raw: unknown): { items: ItemMeta[]; invalid: number
 }
 
 function parseIdMap<T>(raw: unknown, endpoint: string, parse: (v: unknown) => T | null): { map: Map<number, T>; invalid: number } {
-  if (!isRecord(raw) || !isRecord(raw.data)) throw new InvalidResponseError(`${endpoint}: Objekt mit "data" erwartet`);
+  if (!isRecord(raw) || !isRecord(raw.data)) throw new InvalidResponseError(`${endpoint}: expected an object with "data"`);
   const map = new Map<number, T>();
   let invalid = 0;
   for (const [key, value] of Object.entries(raw.data)) {

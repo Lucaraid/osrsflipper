@@ -14,22 +14,28 @@ async function openApp(page: Page, path = "/") {
 test("1. Webseite öffnen & Hauptnavigation", async ({ page }) => {
   await openApp(page);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-  await expect(page.getByText("Noch keine persönlichen Daten")).toBeVisible();
-  const nav = page.getByRole("navigation", { name: "Hauptnavigation" });
+  await expect(page.getByText("No personal data yet")).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
   for (const [label, heading] of [
     ["Flip Scanner", "Flip Scanner"],
-    ["Item Explorer", "Item Explorer"],
-    ["Marktanalyse", "Marktanalyse"],
-    ["Profit-Rechner", "Profit-Rechner"],
-    ["Mein Portfolio", "Mein Portfolio"],
-    ["Flip-Historie", "Flip-Historie"],
+    ["Profit Calculator", "Profit Calculator"],
+    ["My Portfolio", "My Portfolio"],
+    ["Flip History", "Flip History"],
     ["Watchlist", "Watchlist"],
-    ["Preisalarme", "Preisalarme"],
-    ["Einstellungen", "Einstellungen"],
+    ["Settings", "Settings"],
   ]) {
     await nav.getByRole("link", { name: label }).click();
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   }
+});
+
+test("Design: hell ist Standard, Umschalter wechselt auf dunkel und bleibt gespeichert", async ({ page }) => {
+  await openApp(page);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
 test("2./3. Item suchen und Details aufrufen", async ({ page }) => {
@@ -38,16 +44,16 @@ test("2./3. Item suchen und Details aufrufen", async ({ page }) => {
   await page.getByTestId("search-input").fill("whip");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("item-title")).toHaveText("Abyssal whip");
-  await expect(page.getByText("Letzter Instant-Buy")).toBeVisible();
+  await expect(page.getByText("Last instant-buy")).toBeVisible();
   // Suche per ID
   await page.keyboard.press("Control+k");
   await page.getByTestId("search-input").fill("13190");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("item-title")).toHaveText("Old school bond");
-  await expect(page.getByText("steuerfrei").first()).toBeVisible();
+  await expect(page.getByText("tax-free").first()).toBeVisible();
   // Zeitraum wechseln
   await page.getByTestId("lookback-7d").click();
-  await expect(page.getByText(/Auflösung: 1 Stunde je Punkt/)).toBeVisible();
+  await expect(page.getByText(/Resolution: 1 hour per point/)).toBeVisible();
   await expect(page.getByTestId("indicators")).toBeVisible();
 });
 
@@ -73,8 +79,8 @@ test("5. Filter im Scanner setzen", async ({ page }) => {
   expect(before).toBeGreaterThan(0); // synthetische Preise variieren zeitabhängig
   await page.getByTestId("toggle-filters").click();
   await page.getByTestId("filter-min-roi").fill("1000");
-  await expect(page.getByText("Keine Items entsprechen den Filtern")).toBeVisible();
-  await page.getByRole("button", { name: "Filter zurücksetzen" }).click();
+  await expect(page.getByText("No items match the filters")).toBeVisible();
+  await page.getByRole("button", { name: "Reset filters" }).click();
   await expect(page.getByTestId("scanner-row").first()).toBeVisible();
   await page.getByTestId("filter-min-quality").selectOption("75");
   const filtered = await page.getByTestId("scanner-row").count();
@@ -86,8 +92,8 @@ test("5. Filter im Scanner setzen", async ({ page }) => {
 test("6. Item zur Watchlist hinzufügen", async ({ page }) => {
   await openApp(page, "/items/4151");
   await page.getByTestId("watch-4151").click();
-  await expect(page.getByText("zur Watchlist hinzugefügt")).toBeVisible();
-  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Watchlist" }).click();
+  await expect(page.getByText("added to watchlist")).toBeVisible();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Watchlist" }).click();
   await expect(page.getByTestId("watch-row")).toHaveCount(1);
   await expect(page.getByTestId("watch-row")).toContainText("Abyssal whip");
   // bleibt nach Reload erhalten (IndexedDB)
@@ -97,7 +103,7 @@ test("6. Item zur Watchlist hinzufügen", async ({ page }) => {
 
 async function createTrade(page: Page, navigate = true) {
   if (navigate) await openApp(page, "/history");
-  else await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Flip-Historie" }).click();
+  else await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Flip History" }).click();
   await page.getByTestId("new-trade").click();
   await page.getByTestId("trade-item").click();
   await page.getByTestId("trade-item").fill("Abyssal whip");
@@ -110,7 +116,7 @@ async function createTrade(page: Page, navigate = true) {
 
 test("7.–9. Trade erstellen, Teilverkauf erfassen, realisierten Gewinn prüfen", async ({ page }) => {
   await createTrade(page);
-  await expect(page.getByTestId("trade-row")).toContainText("offen");
+  await expect(page.getByTestId("trade-row")).toContainText("open");
   await page.getByTestId("edit-trade").click();
   await page.getByTestId("add-sale").click();
   await page.getByTestId("sale-qty").fill("4");
@@ -118,7 +124,7 @@ test("7.–9. Trade erstellen, Teilverkauf erfassen, realisierten Gewinn prüfen
   // Vorschau: 4 × (1100 − 22 − 1000) = 312
   await expect(page.getByTestId("trade-preview")).toContainText("312");
   await page.getByTestId("save-trade").click();
-  await expect(page.getByTestId("trade-row")).toContainText("teilweise");
+  await expect(page.getByTestId("trade-row")).toContainText("partly sold");
   await expect(page.getByTestId("trade-realized")).toHaveText("312");
 
   // Überverkauf wird verhindert
@@ -127,17 +133,17 @@ test("7.–9. Trade erstellen, Teilverkauf erfassen, realisierten Gewinn prüfen
   await page.getByTestId("sale-qty").last().fill("50");
   await page.getByTestId("sale-price").last().fill("1100");
   await page.getByTestId("save-trade").click();
-  await expect(page.getByText(/mehr verkauft als zu diesem Zeitpunkt vorhanden/).first()).toBeVisible();
+  await expect(page.getByText(/more than you held at that time/).first()).toBeVisible();
   await page.keyboard.press("Escape");
 
   // Dashboard zeigt realisierten Gewinn
-  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Dashboard" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Dashboard" }).click();
   await expect(page.getByTestId("dashboard-kpis")).toContainText("312");
 });
 
 test("10. Daten exportieren und wieder importieren", async ({ page }, testInfo) => {
   await createTrade(page);
-  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Einstellungen" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-button").click()]);
   const file = testInfo.outputPath("backup.json");
   await download.saveAs(file);
@@ -146,20 +152,20 @@ test("10. Daten exportieren und wieder importieren", async ({ page }, testInfo) 
   expect(json.trades).toHaveLength(1);
 
   // alles löschen
-  await page.getByRole("button", { name: "Alle Daten löschen" }).click();
+  await page.getByRole("button", { name: "Delete all data" }).click();
   await page.getByTestId("confirm-button").click();
-  await expect(page.getByText(/Aktuell gespeichert: 0 Trades/)).toBeVisible();
+  await expect(page.getByText(/Currently saved: 0 trades/)).toBeVisible();
 
   // ungültige Datei wird abgelehnt
   const bad = testInfo.outputPath("bad.json");
   fs.writeFileSync(bad, JSON.stringify({ format: "osrs-ge-flipper-backup", version: 1, trades: "kaputt" }));
   await page.getByTestId("import-input").setInputFiles(bad);
-  await expect(page.getByText("Import abgelehnt:")).toBeVisible();
+  await expect(page.getByText("Import rejected:")).toBeVisible();
 
   // gültige Datei importieren
   await page.getByTestId("import-input").setInputFiles(file);
-  await expect(page.getByText(/Aktuell gespeichert: 1 Trades/)).toBeVisible();
-  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Flip-Historie" }).click();
+  await expect(page.getByText(/Currently saved: 1 trades/)).toBeVisible();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Flip History" }).click();
   await expect(page.getByTestId("trade-row")).toHaveCount(1);
 });
 
@@ -218,7 +224,7 @@ test("Trades in gewähltem Ordner speichern (File System Access API, simuliert)"
   await expect(page.getByTestId("history-folder")).toContainText("D-Trades");
   await expect.poll(async () => page.evaluate(() => (window as unknown as { __files: Record<string, string> }).__files["osrs-ge-flipper-daten.json"] ?? "")).toContain("Abyssal whip");
   const csv = await page.evaluate(() => (window as unknown as { __files: Record<string, string> }).__files["trades.csv"] ?? "");
-  expect(csv).toContain(";Kauf;");
+  expect(csv).toContain(";Buy;");
 });
 
 test("Top 10 Käufe: Empfehlungen mit Volumen-Kriterium und Kaufangebot erfassen", async ({ page }) => {
@@ -228,12 +234,12 @@ test("Top 10 Käufe: Empfehlungen mit Volumen-Kriterium und Kaufangebot erfassen
   expect(await picks.count()).toBeLessThanOrEqual(10);
   // sehr hohes Mindestvolumen → keine Empfehlungen
   await page.getByTestId("top-min-volume").fill("100000000");
-  await expect(page.getByText("Kein Item erfüllt aktuell alle Kriterien")).toBeVisible();
+  await expect(page.getByText("No item meets all criteria right now")).toBeVisible();
   await page.getByTestId("top-min-volume").fill("10");
   await expect(picks.first()).toBeVisible();
   await picks.first().getByTestId("top-create-offer").click();
-  await expect(page.getByText(/Kaufangebot für .* erfasst/)).toBeVisible();
-  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Flip-Historie" }).click();
+  await expect(page.getByText(/Buy offer for .* logged/)).toBeVisible();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Flip History" }).click();
   await expect(page.getByTestId("trade-row")).toHaveCount(1);
 });
 
@@ -241,7 +247,7 @@ test("Top 10 High Value: Mindestgewinn pro Trade", async ({ page }) => {
   await openApp(page, "/top");
   await page.getByTestId("tab-high-value").click();
   await page.getByTestId("hv-min-profit").fill("1000000000");
-  await expect(page.getByText("Kein Item erfüllt aktuell alle Kriterien")).toBeVisible();
+  await expect(page.getByText("No item meets all criteria right now")).toBeVisible();
   await page.getByTestId("hv-min-profit").fill("1");
   await page.getByTestId("hv-min-volume").fill("1");
   await expect(page.getByTestId("hv-list").getByTestId("top-pick").first()).toBeVisible();
@@ -252,31 +258,31 @@ test("Trade erfassen übernimmt Rechner-Werte; danach wird ein Verkauf mit offen
   await page.getByTestId("calc-buy").fill("1000");
   await page.getByTestId("calc-sell").fill("1200");
   await page.getByTestId("calc-qty").fill("7");
-  await expect(page.getByTestId("item-new-trade")).toHaveText(/Trade erfassen/);
+  await expect(page.getByTestId("item-new-trade")).toHaveText(/Log trade/);
   await page.getByTestId("item-new-trade").click();
   await expect(page.getByTestId("lot-qty")).toHaveValue("7");
   await expect(page.getByTestId("lot-price")).toHaveValue(/^1.000$/);
   await page.getByTestId("save-trade").click();
 
-  // offener Kauf vorhanden → Button wird zu "Verkauf erfassen"
-  await expect(page.getByTestId("item-new-trade")).toHaveText(/Verkauf erfassen/);
+  // offener Kauf vorhanden → Button wird zu "Log sale"
+  await expect(page.getByTestId("item-new-trade")).toHaveText(/Log sale/);
   await page.getByTestId("item-new-trade").click();
-  await expect(page.getByRole("dialog")).toContainText("Verkauf erfassen");
+  await expect(page.getByRole("dialog")).toContainText("Log sale");
   await expect(page.getByTestId("sale-qty").last()).toHaveValue("7");
   await expect(page.getByTestId("sale-price").last()).toHaveValue(/^1.200$/);
   await page.getByTestId("save-trade").click();
   // vollständig verkauft → wieder "Trade erfassen"
-  await expect(page.getByTestId("item-new-trade")).toHaveText(/Trade erfassen/);
+  await expect(page.getByTestId("item-new-trade")).toHaveText(/Log trade/);
 
   // Flip-Historie: Gewinn 7 × (1200 − 24 − 1000) = 1232
-  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Flip-Historie" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Flip History" }).click();
   await expect(page.getByTestId("trade-realized")).toHaveText(/^1.232$/);
 });
 
 test("Flip-Historie: „Verkaufen“ bei offenem Trade füllt Menge vor", async ({ page }) => {
   await createTrade(page);
   await page.getByTestId("sell-trade").click();
-  await expect(page.getByRole("dialog")).toContainText("Verkauf erfassen");
+  await expect(page.getByRole("dialog")).toContainText("Log sale");
   await expect(page.getByTestId("sale-qty").last()).toHaveValue("10");
   await expect(page.getByTestId("sale-price").last()).not.toHaveValue("");
 });

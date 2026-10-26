@@ -34,7 +34,7 @@ export type PositionRules = z.infer<typeof PositionRulesSchema>;
 
 export const SettingsSchema = z.object({
   version: z.literal(1).default(1),
-  theme: z.enum(["dark", "light"]).default("dark"),
+  theme: z.enum(["dark", "light"]).default("light"),
   defaultCapital: z.number().nonnegative().max(1e13).default(10_000_000),
   /** Über-/Unterbieten in gp gegenüber dem letzten beobachteten Preis */
   priceOffset: z.number().int().min(0).max(1_000_000).default(1),

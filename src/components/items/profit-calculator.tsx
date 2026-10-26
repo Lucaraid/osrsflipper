@@ -77,26 +77,26 @@ export function ProfitCalculator({
     <div className="grid gap-4 lg:grid-cols-2" data-testid="profit-calculator">
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Kaufpreis / Stück (gp)">
-            <AmountInput value={buy} onChange={setBuy} aria-label="Kaufpreis pro Stück" data-testid="calc-buy" />
+          <Field label="Buy price each (gp)">
+            <AmountInput value={buy} onChange={setBuy} aria-label="Buy price each" data-testid="calc-buy" />
           </Field>
-          <Field label="Verkaufspreis / Stück (gp)">
-            <AmountInput value={sell} onChange={setSell} aria-label="Verkaufspreis pro Stück" data-testid="calc-sell" />
+          <Field label="Sell price each (gp)">
+            <AmountInput value={sell} onChange={setSell} aria-label="Sell price each" data-testid="calc-sell" />
           </Field>
-          <Field label="Stückzahl" hint={buyLimit != null ? `GE-Limit: ${gp(buyLimit)} / 4 h` : "GE-Limit nicht verfügbar"}>
-            <AmountInput value={qty} onChange={setQty} aria-label="Stückzahl" data-testid="calc-qty" />
+          <Field label="Quantity" hint={buyLimit != null ? `GE limit: ${gp(buyLimit)} / 4 h` : "GE limit not available"}>
+            <AmountInput value={qty} onChange={setQty} aria-label="Quantity" data-testid="calc-qty" />
           </Field>
-          <Field label="Verfügbares Kapital (gp)">
-            <AmountInput value={capital} onChange={setCapital} aria-label="Kapital" />
+          <Field label="Available capital (gp)">
+            <AmountInput value={capital} onChange={setCapital} aria-label="Capital" />
           </Field>
-          <Field label="Sonstige Kosten (gp, optional)">
-            <AmountInput value={otherCosts} onChange={setOtherCosts} aria-label="Sonstige Kosten" />
+          <Field label="Other costs (gp, optional)">
+            <AmountInput value={otherCosts} onChange={setOtherCosts} aria-label="Other costs" />
           </Field>
-          <Field label="Tatsächliche Steuer (gp, optional)" hint="Überschreibt die berechnete Steuer, z. B. aus eigenen Trades.">
-            <AmountInput value={actualTax} onChange={setActualTax} aria-label="Tatsächliche Steuer" />
+          <Field label="Actual tax (gp, optional)" hint="Overrides the calculated tax, e.g. from your own trades.">
+            <AmountInput value={actualTax} onChange={setActualTax} aria-label="Actual tax" />
           </Field>
-          <Field label="Zielgewinn / Stück (gp, optional)">
-            <AmountInput value={target} onChange={setTarget} aria-label="Zielgewinn pro Stück" />
+          <Field label="Target profit each (gp, optional)">
+            <AmountInput value={target} onChange={setTarget} aria-label="Target profit each" />
           </Field>
         </div>
         {marketPrices && (marketPrices.buy != null || marketPrices.sell != null) && (
@@ -108,12 +108,12 @@ export function ProfitCalculator({
               if (marketPrices.sell != null) setSell(marketPrices.sell);
             }}
           >
-            Geschätzte Preise aus letzter Beobachtung übernehmen
+            Use estimated prices from latest observation
           </Button>
         )}
         <p className="text-[11px] text-faint">
-          Eingaben akzeptieren Kurzschreibweise (z. B. 1.5m, 250k). Steuer: {TAX_RULES.rate * 100} % pro Stück, abgerundet, max. {gp(TAX_RULES.capPerItem)} gp/Stück
-          {exempt ? " – dieses Item ist steuerfrei." : "."}
+          Inputs accept shorthand (e.g. 1.5m, 250k). Tax: {TAX_RULES.rate * 100}% per item, rounded down, max {gp(TAX_RULES.capPerItem)} gp/item
+          {exempt ? " – this item is tax-free." : "."}
         </p>
       </div>
 
@@ -122,52 +122,52 @@ export function ProfitCalculator({
           <InfoNote>
             {r.issues
               .filter((i) => i.code === "missing" || i.code === "invalid")
-              .map((i) => (i.code === "missing" ? `Bitte ${i.field === "buyPrice" ? "Kaufpreis" : i.field === "sellPrice" ? "Verkaufspreis" : "Stückzahl"} eingeben.` : i.message))
+              .map((i) => (i.code === "missing" ? `Please enter a ${i.field === "buyPrice" ? "buy price" : i.field === "sellPrice" ? "sell price" : "quantity"}.` : i.message))
               .join(" ")}
           </InfoNote>
         ) : (
           <>
-            <Row label="Einkauf">
+            <Row label="Purchase cost">
               <Gp value={r.purchaseCost} />
             </Row>
-            <Row label="Kapitalbedarf" hint="Einkauf + sonstige Kosten">
+            <Row label="Capital needed" hint="Purchase cost + other costs">
               <Gp value={r.capitalRequired} />
             </Row>
-            <Row label="Verkaufsumsatz (brutto)">
+            <Row label="Sale revenue (gross)">
               <Gp value={r.revenueGross} />
             </Row>
-            <Row label="Bruttogewinn" hint="Umsatz − Einkauf, vor Steuer und Kosten">
+            <Row label="Gross profit" hint="Revenue − purchase cost, before tax and costs">
               <Gp value={r.grossProfit} colored />
             </Row>
-            <Row label={r.taxIsActual ? "GE-Steuer (tatsächlich)" : "GE-Steuer (berechnet)"} hint={`${gp(r.taxPerItem)} gp pro Stück`}>
+            <Row label={r.taxIsActual ? "GE tax (actual)" : "GE tax (calculated)"} hint={`${gp(r.taxPerItem)} gp per item`}>
               <Gp value={-r.taxTotal} colored />
             </Row>
             <div className="my-1 border-t border-border" />
-            <Row label="Nettogewinn" strong>
+            <Row label="Net profit" strong>
               <span data-testid="calc-net">
                 <Gp value={r.netProfit} colored />
               </span>
             </Row>
-            <Row label="Nettogewinn / Stück">
+            <Row label="Net profit each">
               <Gp value={r.netProfitPerItem} colored />
             </Row>
-            <Row label="ROI auf eingesetztes Kapital">
+            <Row label="ROI on capital used">
               <span data-testid="calc-roi">
                 <Pct value={r.roi} />
               </span>
             </Row>
             <div className="my-1 border-t border-border" />
-            <Row label="Break-even-Verkaufspreis" hint="Kleinster Verkaufspreis ohne Verlust (inkl. Steuer)">
+            <Row label="Break-even sell price" hint="Lowest sell price without a loss (incl. tax)">
               <span data-testid="calc-breakeven">
                 <Gp value={r.breakEvenSellPrice} />
               </span>
             </Row>
-            <Row label="Max. Kaufpreis für Zielgewinn">{target == null ? <span className="text-faint">Zielgewinn eingeben</span> : <Gp value={maxBuy} />}</Row>
-            <Row label="Max. Stückzahl mit Kapital" hint={maxQ?.byLimit != null ? `Kapital: ${gp(maxQ.byCapital)} · Limit: ${gp(maxQ.byLimit)}` : undefined}>
+            <Row label="Max buy price for target profit">{target == null ? <span className="text-faint">Enter a target profit</span> : <Gp value={maxBuy} />}</Row>
+            <Row label="Max quantity with capital" hint={maxQ?.byLimit != null ? `Capital: ${gp(maxQ.byCapital)} · Limit: ${gp(maxQ.byLimit)}` : undefined}>
               <Gp value={maxQ?.max ?? null} />
             </Row>
-            {r.issues.some((i) => i.code === "insufficient_capital") && <p className="mt-2 text-xs text-neg">Kapital reicht nicht für diese Stückzahl.</p>}
-            {r.issues.some((i) => i.code === "exceeds_limit") && <p className="mt-1 text-xs text-warn">Stückzahl übersteigt das GE-Kauflimit (4 h).</p>}
+            {r.issues.some((i) => i.code === "insufficient_capital") && <p className="mt-2 text-xs text-neg">Not enough capital for this quantity.</p>}
+            {r.issues.some((i) => i.code === "exceeds_limit") && <p className="mt-1 text-xs text-warn">Quantity exceeds the GE buy limit (4 h).</p>}
           </>
         )}
       </div>

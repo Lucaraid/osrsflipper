@@ -10,6 +10,6 @@ export async function GET(req: Request) {
     const snap = await getMarketService().getSnapshot();
     return jsonResponse(req, snap, { "Cache-Control": "public, max-age=15, s-maxage=20, stale-while-revalidate=60" });
   } catch (err) {
-    return errorResponse(503, "Marktdaten derzeit nicht verfügbar. Die OSRS Wiki API ist evtl. nicht erreichbar.", err);
+    return errorResponse(503, "Market data currently unavailable. The OSRS Wiki API may be unreachable.", err);
   }
 }

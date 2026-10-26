@@ -30,7 +30,7 @@ export const DB_VERSION = 2;
 let dbPromise: Promise<IDBPDatabase<FlipperDB>> | null = null;
 
 export function getDb(): Promise<IDBPDatabase<FlipperDB>> {
-  if (typeof indexedDB === "undefined") return Promise.reject(new Error("IndexedDB ist in diesem Browser nicht verfügbar."));
+  if (typeof indexedDB === "undefined") return Promise.reject(new Error("IndexedDB is not available in this browser."));
   if (!dbPromise) {
     dbPromise = openDB<FlipperDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {

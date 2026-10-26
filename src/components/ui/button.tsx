@@ -4,17 +4,17 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg text-sm font-semibold transition-all active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        primary: "bg-accent text-[#1a1407] hover:brightness-110",
-        secondary: "bg-surface-3 text-text hover:bg-border-strong",
-        outline: "border border-border bg-transparent hover:bg-surface-2",
+        primary: "bg-accent text-accent-fg shadow-card hover:brightness-110",
+        secondary: "bg-surface-3 text-text hover:bg-border",
+        outline: "border border-border-strong/60 bg-surface hover:bg-surface-2",
         ghost: "hover:bg-surface-2 text-muted hover:text-text",
         danger: "bg-neg text-white hover:brightness-110",
       },
-      size: { sm: "h-7 px-2.5 text-xs", md: "h-8 px-3", lg: "h-10 px-4", icon: "h-8 w-8" },
+      size: { sm: "h-7 px-3 text-xs", md: "h-9 px-3.5", lg: "h-10 px-5", icon: "h-9 w-9" },
     },
     defaultVariants: { variant: "secondary", size: "md" },
   },

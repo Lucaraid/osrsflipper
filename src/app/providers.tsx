@@ -2,7 +2,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AlertWatcher } from "@/components/layout/alert-watcher";
 import { Toaster } from "@/components/layout/toaster";
 import { FolderSync } from "@/components/layout/folder-sync";
 import { useDataStore } from "@/state/data";
@@ -40,7 +39,6 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={client}>
       <TooltipProvider>
         <Hydrator />
-        <AlertWatcher />
         <FolderSync />
         {children}
         <Toaster />

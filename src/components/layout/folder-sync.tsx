@@ -47,30 +47,30 @@ export function FolderSync() {
   const local = useDataStore.getState();
   return (
     <Dialog open onOpenChange={() => undefined}>
-      <DialogContent title="Welche Daten sollen gelten?" description={`Der Ordner „${folderName}“ enthält bereits Daten, die sich von den Daten in diesem Browser unterscheiden.`}>
+      <DialogContent title="Which data should win?" description={`The folder “${folderName}” already contains data that differs from the data in this browser.`}>
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div className="rounded-md border border-border p-3">
-            <div className="font-medium">Im Ordner</div>
+            <div className="font-medium">In the folder</div>
             <div className="text-xs text-muted">
-              {conflict.backup.trades.length} Trades · {conflict.backup.capital.length} Kapitalbuchungen · {conflict.backup.watchlist.length} Watchlist
+              {conflict.backup.trades.length} trades · {conflict.backup.capital.length} capital entries · {conflict.backup.watchlist.length} watchlist
               <br />
-              Stand {dateTime(conflict.backup.exportedAt)}
+              As of {dateTime(conflict.backup.exportedAt)}
             </div>
             <Button className="mt-2 w-full" variant="primary" onClick={() => resolve("folder")} data-testid="conflict-folder">
-              Ordner-Daten laden
+              Load folder data
             </Button>
           </div>
           <div className="rounded-md border border-border p-3">
-            <div className="font-medium">In diesem Browser</div>
+            <div className="font-medium">In this browser</div>
             <div className="text-xs text-muted">
-              {local.trades.length} Trades · {local.capital.length} Kapitalbuchungen · {local.watchlist.length} Watchlist
+              {local.trades.length} trades · {local.capital.length} capital entries · {local.watchlist.length} watchlist
             </div>
             <Button className="mt-2 w-full" variant="outline" onClick={() => resolve("local")} data-testid="conflict-local">
-              Browser-Daten in Ordner speichern
+              Save browser data to folder
             </Button>
           </div>
         </div>
-        <p className="mt-3 text-[11px] text-faint">Die jeweils andere Version wird überschrieben. Tipp: Vorher unter Einstellungen eine JSON-Sicherung exportieren.</p>
+        <p className="mt-3 text-[11px] text-faint">The other version will be overwritten. Tip: export a JSON backup in Settings first.</p>
       </DialogContent>
     </Dialog>
   );
@@ -83,31 +83,31 @@ export function FolderStatusChip() {
   if (status === "unknown") return null;
   const tone = status === "connected" ? "text-pos" : status === "needs-permission" || status === "none" ? "text-warn" : status === "error" ? "text-neg" : "text-muted";
   const label =
-    status === "connected" ? folderName : status === "needs-permission" ? "Zugriff erneuern" : status === "none" ? "Nur Browser" : status === "unsupported" ? "Nur Browser" : "Speicherfehler";
+    status === "connected" ? folderName : status === "needs-permission" ? "Renew access" : status === "none" ? "Browser only" : status === "unsupported" ? "Browser only" : "Save error";
   return (
     <Tip
       content={
         <div className="space-y-1">
           {status === "connected" && (
             <>
-              <div>Daten werden im Ordner „{folderName}“ gespeichert ({DATA_FILE} + trades.csv).</div>
-              <div className="text-muted">Zuletzt gespeichert: {lastSavedAt ? ago((now - lastSavedAt) / 1000) : "–"}</div>
+              <div>Data is saved in the folder “{folderName}” ({DATA_FILE} + trades.csv).</div>
+              <div className="text-muted">Last saved: {lastSavedAt ? ago((now - lastSavedAt) / 1000) : "–"}</div>
             </>
           )}
-          {status === "needs-permission" && <div>Der Browser braucht deine Bestätigung, um wieder in „{folderName}“ zu schreiben. Klicken zum Erlauben.</div>}
-          {status === "none" && <div>Daten liegen nur im Browser-Speicher. Unter Einstellungen einen Ordner auf deinem Computer wählen.</div>}
-          {status === "unsupported" && <div>Dieser Browser unterstützt keine Ordner-Speicherung (nur Chrome/Edge). Daten liegen im Browser – regelmässig exportieren.</div>}
+          {status === "needs-permission" && <div>The browser needs your permission to write to “{folderName}” again. Click to allow.</div>}
+          {status === "none" && <div>Data is only stored in the browser. Pick a folder on your computer in Settings.</div>}
+          {status === "unsupported" && <div>This browser can’t save to a folder (Chrome/Edge only). Data stays in the browser – export regularly.</div>}
           {lastError && <div className="text-neg">{lastError}</div>}
         </div>
       }
     >
       {status === "needs-permission" ? (
-        <button type="button" onClick={() => void useFolderStore.getState().reconnect()} className={cn("flex items-center gap-1.5 rounded-md border border-warn/50 px-2 py-1 text-xs", tone)} data-testid="folder-status">
+        <button type="button" onClick={() => void useFolderStore.getState().reconnect()} className={cn("flex items-center gap-1.5 rounded-full border border-warn/50 bg-surface px-2.5 py-1 text-xs", tone)} data-testid="folder-status">
           <FolderSyncIcon className="size-3.5" />
           <span className="hidden sm:inline">{label}</span>
         </button>
       ) : (
-        <Link href="/settings#speicherort" className={cn("flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs", tone)} data-testid="folder-status">
+        <Link href="/settings#storage" className={cn("flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs", tone)} data-testid="folder-status">
           {status === "connected" ? <FolderOpen className={cn("size-3.5", saving && "animate-pulse")} /> : <HardDrive className="size-3.5" />}
           <span className="hidden max-w-32 truncate sm:inline">{label}</span>
         </Link>

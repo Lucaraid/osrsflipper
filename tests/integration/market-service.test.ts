@@ -71,7 +71,7 @@ describe("WikiClient", () => {
   it("Timeout führt nach Wiederholungen zu Fehler", async () => {
     const fetchFn = vi.fn((_u: string, init: RequestInit) => new Promise<Response>((_, rej) => init.signal?.addEventListener("abort", () => rej(new Error("aborted")))));
     const c = new WikiClient({ fetchFn: fetchFn as never, sleepFn: noSleep });
-    await expect(c.getJson("/x", { timeoutMs: 20, retries: 1 })).rejects.toThrow(/Zeitüberschreitung/);
+    await expect(c.getJson("/x", { timeoutMs: 20, retries: 1 })).rejects.toThrow(/Timed out/);
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
   it("ungültiges JSON ist ein Fehler", async () => {
@@ -154,7 +154,7 @@ describe("MarketService", () => {
     const src = new FakeSource();
     src.failLatest = true;
     const svc = new MarketService(src, new TtlCache(), Date.now, 50);
-    await expect(svc.getSnapshot()).rejects.toThrow(/Marktdaten nicht verfügbar/);
+    await expect(svc.getSnapshot()).rejects.toThrow(/Market data unavailable/);
   });
   it("Items und Zeitreihen", async () => {
     const svc = new MarketService(new FakeSource());

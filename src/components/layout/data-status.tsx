@@ -22,28 +22,28 @@ export function DataStatus() {
     <Tip
       content={
         <div className="space-y-1">
-          <div>Quelle: OSRS Wiki Real-time Prices API (v2)</div>
-          <div>Letzter erfolgreicher Abruf: {dateTime(fetchedAt)}</div>
+          <div>Source: OSRS Wiki Real-time Prices API (v2)</div>
+          <div>Last successful fetch: {dateTime(fetchedAt)}</div>
           {data && (
             <div className="text-muted">
-              24h-Historie: {data.meta.day.blocksLoaded}/{data.meta.day.blocksExpected} Stundenblöcke · 5-min-Block: {dateTime((data.meta.fiveMin.blockTimestamp ?? 0) * 1000)}
+              24h history: {data.meta.day.blocksLoaded}/{data.meta.day.blocksExpected} hourly blocks · 5-min block: {dateTime((data.meta.fiveMin.blockTimestamp ?? 0) * 1000)}
             </div>
           )}
-          {data?.meta.latest.error && <div className="text-warn">Fehler beim letzten Abruf: {data.meta.latest.error}</div>}
+          {data?.meta.latest.error && <div className="text-warn">Last fetch failed: {data.meta.latest.error}</div>}
           {error && <div className="text-neg">{error.message}</div>}
-          <div className="text-muted">Automatische Aktualisierung alle 60 s.</div>
+          <div className="text-muted">Refreshes automatically every 60 s.</div>
         </div>
       }
     >
       <button
         type="button"
         onClick={() => qc.invalidateQueries({ queryKey: ["market"] })}
-        className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-muted hover:bg-surface-2"
+        className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-muted hover:bg-surface-2"
         data-testid="data-status"
       >
         {data?.meta.source === "fixtures" && <FlaskConical className="size-3.5 text-warn" />}
         {stale || (error && !data) ? <AlertTriangle className={cn("size-3.5", tone)} /> : <span className={cn("size-2 rounded-full bg-current", tone)} />}
-        <span className="hidden sm:inline">{error && !data ? "Keine Marktdaten" : fetchedAt ? `Aktualisiert ${ago(age)}` : "Lade…"}</span>
+        <span className="hidden sm:inline">{error && !data ? "No market data" : fetchedAt ? `Updated ${ago(age)}` : "Loading…"}</span>
         <RefreshCw className={cn("size-3", isFetching && "animate-spin")} />
       </button>
     </Tip>
@@ -55,7 +55,7 @@ export function FixtureBanner() {
   if (data?.meta.source !== "fixtures") return null;
   return (
     <div className="bg-warn px-3 py-1 text-center text-xs font-semibold text-black" role="alert" data-testid="fixture-banner">
-      TESTDATEN-MODUS – synthetische Preise, keine echten Marktdaten
+      TEST DATA MODE – synthetic prices, not real market data
     </div>
   );
 }
@@ -67,7 +67,7 @@ export function StaleBanner() {
   if (error && !data) {
     return (
       <div className="border-b border-neg/40 bg-neg-soft px-4 py-1.5 text-xs text-neg" role="alert">
-        Marktdaten sind derzeit nicht verfügbar ({error.message}). Persönliche Daten und der Rechner funktionieren weiterhin.
+        Market data is currently unavailable ({error.message}). Your own data and the calculator still work.
       </div>
     );
   }
@@ -77,7 +77,7 @@ export function StaleBanner() {
   if (!data.meta.latest.stale && ageMin <= s.freshness.staleMinutes) return null;
   return (
     <div className="border-b border-warn/40 bg-warn-soft px-4 py-1.5 text-xs text-warn" role="alert">
-      Achtung: Es werden zwischengespeicherte Marktdaten angezeigt (Stand {dateTime(fetchedAt)}, {ago(ageMin * 60)}). Die OSRS Wiki API ist evtl. nicht erreichbar.
+      Heads up: showing cached market data (as of {dateTime(fetchedAt)}, {ago(ageMin * 60)}). The OSRS Wiki API may be unreachable.
     </div>
   );
 }

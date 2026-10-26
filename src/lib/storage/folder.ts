@@ -16,6 +16,7 @@ import { parseBackup, type Backup, type ImportResult } from "./backup";
 export const DATA_FILE = "osrs-ge-flipper-daten.json";
 export const CSV_FILE = "trades.csv";
 export const HANDLE_KEY = "dataFolderHandle";
+const STATUS_EN = { leer: "empty", offen: "open", teilweise: "partly sold", geschlossen: "closed" } as const;
 
 /* Minimale Typen – die File System Access API ist (noch) nicht vollständig in lib.dom enthalten. */
 type PermissionMode = { mode: "read" | "readwrite" };
@@ -107,7 +108,7 @@ function isoLocal(ms: number): string {
  * Eine Zeile pro Transaktion; bei Verkäufen inkl. Steuer und realisiertem Gewinn nach FIFO.
  */
 export function tradesToCsv(trades: Trade[]): string {
-  const header = ["Trade-ID", "Item", "Item-ID", "Typ", "Datum", "Menge", "Preis/Stück", "Gebühren", "Steuer", "Betrag netto", "Realisiert (FIFO)", "Status", "Notiz"];
+  const header = ["Trade ID", "Item", "Item ID", "Type", "Date", "Quantity", "Price each", "Fees", "Tax", "Net amount", "Realised (FIFO)", "Status", "Note"];
   const rows: string[][] = [header];
   const sorted = [...trades].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
   for (const t of sorted) {
@@ -116,15 +117,15 @@ export function tradesToCsv(trades: Trade[]): string {
     type Row = { date: number; cells: (string | number | null)[] };
     const items: Row[] = [];
     for (const l of t.lots) {
-      items.push({ date: l.date, cells: [t.id, t.itemName, t.itemId, "Kauf", isoLocal(l.date), l.quantity, l.price, l.fees ?? 0, 0, -(l.price * l.quantity + (l.fees ?? 0)), null, s.status, t.notes] });
+      items.push({ date: l.date, cells: [t.id, t.itemName, t.itemId, "Buy", isoLocal(l.date), l.quantity, l.price, l.fees ?? 0, 0, -(l.price * l.quantity + (l.fees ?? 0)), null, STATUS_EN[s.status], t.notes] });
     }
     for (const x of t.sales) {
       const { tax } = saleTax(x, t.itemId);
       const net = x.price * x.quantity - tax - (x.fees ?? 0);
-      items.push({ date: x.date, cells: [t.id, t.itemName, t.itemId, "Verkauf", isoLocal(x.date), x.quantity, x.price, x.fees ?? 0, tax, net, Math.round(realizedBySale.get(x.id) ?? 0), s.status, t.notes] });
+      items.push({ date: x.date, cells: [t.id, t.itemName, t.itemId, "Sale", isoLocal(x.date), x.quantity, x.price, x.fees ?? 0, tax, net, Math.round(realizedBySale.get(x.id) ?? 0), STATUS_EN[s.status], t.notes] });
     }
     for (const o of t.offers) {
-      items.push({ date: o.date, cells: [t.id, t.itemName, t.itemId, "Kaufangebot (offen)", isoLocal(o.date), o.quantity, o.price, 0, 0, null, null, s.status, t.notes] });
+      items.push({ date: o.date, cells: [t.id, t.itemName, t.itemId, "Buy offer (open)", isoLocal(o.date), o.quantity, o.price, 0, 0, null, null, STATUS_EN[s.status], t.notes] });
     }
     items.sort((a, b) => a.date - b.date);
     for (const r of items) rows.push(r.cells.map((c) => (c == null ? "" : String(c))));

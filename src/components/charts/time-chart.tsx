@@ -38,7 +38,7 @@ function subscribeTheme(cb: () => void) {
 }
 
 function useTheme() {
-  return useSyncExternalStore(subscribeTheme, () => document.documentElement.dataset.theme ?? "dark", () => "dark");
+  return useSyncExternalStore(subscribeTheme, () => document.documentElement.dataset.theme ?? "light", () => "light");
 }
 
 /**
@@ -109,7 +109,7 @@ export function TimeChart({ series, height = 320, formatValue = defaultFormat, t
       const rows = apis
         .map(({ s, api }) => {
           const d = p.seriesData.get(api) as { value?: number } | undefined;
-          const v = d && typeof d.value === "number" ? (s.type === "histogram" ? d.value.toLocaleString("de-CH") : formatValue(d.value)) : "keine Daten";
+          const v = d && typeof d.value === "number" ? (s.type === "histogram" ? d.value.toLocaleString("de-CH") : formatValue(d.value)) : "no data";
           const color = SAFE_COLOR.test(s.color) ? s.color : "inherit";
           return `<div style="display:flex;gap:8px;justify-content:space-between"><span style="color:${color}">${esc(s.name)}</span><span class="num">${esc(v)}</span></div>`;
         })

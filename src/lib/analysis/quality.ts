@@ -53,11 +53,11 @@ export function assessQuality(row: MarketRow, nowSec: number, t: QualityThreshol
   const ageSec = ages.length ? Math.max(...ages) : null;
 
   const freshness = sideFreshness(highAge, t) + sideFreshness(lowAge, t);
-  if (ageSec != null && ageSec > t.staleMinutes * 60) notes.push(`Preis zuletzt vor ${Math.round(ageSec / 60)} Minuten beobachtet (veraltet).`);
+  if (ageSec != null && ageSec > t.staleMinutes * 60) notes.push(`Price last seen ${Math.round(ageSec / 60)} minutes ago (stale).`);
 
   const bothSides = row.high != null && row.low != null ? 10 : 0;
-  if (row.high == null) notes.push("Kein Instant-Buy-Preis beobachtet.");
-  if (row.low == null) notes.push("Kein Instant-Sell-Preis beobachtet.");
+  if (row.high == null) notes.push("No instant-buy price observed.");
+  if (row.low == null) notes.push("No instant-sell price observed.");
 
   let activity = 0;
   const h1 = row.h1;
@@ -65,39 +65,39 @@ export function assessQuality(row: MarketRow, nowSec: number, t: QualityThreshol
     const sides = (h1.volHigh > 0 ? 1 : 0) + (h1.volLow > 0 ? 1 : 0);
     activity = sides === 2 ? 15 : sides === 1 ? 7 : 0;
   }
-  if (activity === 0) notes.push("Keine Handelsaktivität in der letzten Stunde erfasst.");
+  if (activity === 0) notes.push("No trading activity in the last hour.");
 
   let depth = 0;
   const d1 = row.d1;
   const expected = Math.max(1, dayBlocksLoaded);
   if (d1) {
     depth = 15 * Math.min(1, d1.activeBlocks / expected) + 10 * Math.min(1, d1.bothSidedBlocks / expected);
-    if (d1.activeBlocks < expected / 2) notes.push(`Nur ${d1.activeBlocks} von ${expected} Stunden mit Handel – dünn gehandelt.`);
+    if (d1.activeBlocks < expected / 2) notes.push(`Only ${d1.activeBlocks} of ${expected} hours with trades – thinly traded.`);
   } else {
-    notes.push("Keine historischen 24h-Daten verfügbar.");
+    notes.push("No 24h history available.");
   }
-  if (dayBlocksLoaded < 24) notes.push(`Historie unvollständig: ${dayBlocksLoaded}/24 Stundenblöcke geladen.`);
+  if (dayBlocksLoaded < 24) notes.push(`History incomplete: ${dayBlocksLoaded}/24 hourly blocks loaded.`);
 
   let plausibility = 0;
   if (row.high != null && row.low != null) {
     const spread = row.high - row.low;
     if (spread < 0) {
-      notes.push("Instant-Sell liegt über Instant-Buy (zeitversetzte Beobachtungen) – Marge nicht belastbar.");
+      notes.push("Instant-sell is above instant-buy (observations at different times) – margin not reliable.");
     } else if (d1?.avgSpread != null && d1.avgSpread > 0) {
       const ratio = spread / d1.avgSpread;
       if (ratio >= 1 / 3 && ratio <= 3) plausibility = 20;
       else if (ratio >= 1 / 6 && ratio <= 6) plausibility = 10;
       else plausibility = 3;
-      if (ratio > 3) notes.push("Aktueller Spread deutlich grösser als im 24h-Durchschnitt – Marge evtl. nicht realisierbar.");
+      if (ratio > 3) notes.push("Current spread much larger than the 24h average – margin may not be achievable.");
     } else {
       plausibility = 5;
-      notes.push("Marge nicht gegen Historie prüfbar.");
+      notes.push("Margin can’t be checked against history.");
     }
     const mid = (row.high + row.low) / 2;
     const ref = d1 ? (d1.avgHigh != null && d1.avgLow != null ? (d1.avgHigh + d1.avgLow) / 2 : (d1.avgHigh ?? d1.avgLow)) : null;
     if (ref != null && ref > 0 && Math.abs(mid / ref - 1) > 0.3) {
       plausibility = Math.min(plausibility, 5);
-      notes.push("Letzte Preise weichen > 30 % vom 24h-Durchschnitt ab.");
+      notes.push("Latest prices deviate > 30% from the 24h average.");
     }
   }
 

@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 function Reasons({ c }: { c: FlipCandidate }) {
   return (
     <div className="space-y-1">
-      <div className="font-medium">Ranking {c.score}/100 – Entscheidungshilfe, keine Gewinnwahrscheinlichkeit</div>
+      <div className="font-medium">Score {c.score}/100 – a decision aid, not a probability of profit</div>
       <ul className="space-y-0.5">
         {c.reasons.map((r) => (
           <li key={r.text} className={cn(r.tone === "positive" && "text-pos", r.tone === "negative" && "text-neg", r.tone === "neutral" && "text-muted")}>
@@ -57,40 +57,40 @@ export function ScannerTable({ rows, compact = false }: { rows: FlipCandidate[];
             <tr className="border-b border-border">
               <th className="px-3 py-2 font-medium">Item</th>
               <th className="px-2 py-2 text-right font-medium">
-                <Tip content="Letzter beobachteter Instant-Buy-Preis (jemand hat sofort gekauft)">
-                  <span className="cursor-help">Inst.-Buy</span>
+                <Tip content="Last observed instant-buy price (someone bought instantly)">
+                  <span className="cursor-help">Inst. buy</span>
                 </Tip>
               </th>
               <th className="px-2 py-2 text-right font-medium">
-                <Tip content="Letzter beobachteter Instant-Sell-Preis (jemand hat sofort verkauft)">
-                  <span className="cursor-help">Inst.-Sell</span>
+                <Tip content="Last observed instant-sell price (someone sold instantly)">
+                  <span className="cursor-help">Inst. sell</span>
                 </Tip>
               </th>
-              {!compact && <th className="px-2 py-2 text-right font-medium">Kauf<Est /></th>}
-              {!compact && <th className="px-2 py-2 text-right font-medium">Verkauf<Est /></th>}
+              {!compact && <th className="px-2 py-2 text-right font-medium">Buy<Est /></th>}
+              {!compact && <th className="px-2 py-2 text-right font-medium">Sell<Est /></th>}
               <th className="px-2 py-2 text-right font-medium">
-                <Tip content="Geschätzte Nettomarge pro Stück nach 2 % GE-Steuer (abgerundet, max. 5M)">
-                  <span className="cursor-help">Marge netto<Est /></span>
+                <Tip content="Estimated net margin per item after 2% GE tax (rounded down, max 5M)">
+                  <span className="cursor-help">Net margin<Est /></span>
                 </Tip>
               </th>
               <th className="px-2 py-2 text-right font-medium">ROI<Est /></th>
               <th className="px-2 py-2 text-right font-medium">
-                <Tip content="Stückzahl nach Kapital und GE-Kauflimit (4 h)">
-                  <span className="cursor-help">Menge / Limit</span>
+                <Tip content="Quantity based on capital and GE buy limit (4 h)">
+                  <span className="cursor-help">Qty / limit</span>
                 </Tip>
               </th>
-              {!compact && <th className="px-2 py-2 text-right font-medium">Kapital</th>}
-              <th className="px-2 py-2 text-right font-medium">Gewinn @ Kapital<Est /></th>
-              {!compact && <th className="px-2 py-2 text-right font-medium">Pot. / Limit<Est /></th>}
+              {!compact && <th className="px-2 py-2 text-right font-medium">Capital</th>}
+              <th className="px-2 py-2 text-right font-medium">Profit @ capital<Est /></th>
+              {!compact && <th className="px-2 py-2 text-right font-medium">Pot. / limit<Est /></th>}
               <th className="px-2 py-2 text-right font-medium">
-                <Tip content="Gehandelte Stück (beide Seiten): letzte Stunde / letzte 24 h">
+                <Tip content="Items traded (both sides): last hour / last 24 h">
                   <span className="cursor-help">Vol. 1h / 24h</span>
                 </Tip>
               </th>
-              <th className="px-2 py-2 text-right font-medium">Datenalter</th>
-              <th className="px-2 py-2 font-medium">Risiko</th>
-              <th className="px-2 py-2 font-medium">Qualität</th>
-              <th className="px-2 py-2 font-medium">Ranking</th>
+              <th className="px-2 py-2 text-right font-medium">Data age</th>
+              <th className="px-2 py-2 font-medium">Risk</th>
+              <th className="px-2 py-2 font-medium">Quality</th>
+              <th className="px-2 py-2 font-medium">Score</th>
               <th className="px-2 py-2" />
             </tr>
           </thead>
@@ -104,7 +104,7 @@ export function ScannerTable({ rows, compact = false }: { rows: FlipCandidate[];
                       <span className="block truncate">{c.name}</span>
                       <span className="block text-[10px] text-faint">
                         #{c.id}
-                        {c.taxExempt && <span className="ml-1 text-pos">steuerfrei</span>}
+                        {c.taxExempt && <span className="ml-1 text-pos">tax-free</span>}
                       </span>
                     </span>
                   </Link>
@@ -118,8 +118,8 @@ export function ScannerTable({ rows, compact = false }: { rows: FlipCandidate[];
                     content={
                       c.taxPerItem != null ? (
                         <div>
-                          <div>Steuer pro Stück: {c.taxPerItem.toLocaleString("de-CH")} gp</div>
-                          <div className="text-muted">Konservativ (mit Ø-Preisen 1h): {c.netMarginConservative != null ? `${Math.round(c.netMarginConservative).toLocaleString("de-CH")} gp` : NA}</div>
+                          <div>Tax per item: {c.taxPerItem.toLocaleString("de-CH")} gp</div>
+                          <div className="text-muted">Conservative (with 1h average prices): {c.netMarginConservative != null ? `${Math.round(c.netMarginConservative).toLocaleString("de-CH")} gp` : NA}</div>
                         </div>
                       ) : (
                         NA
@@ -147,7 +147,7 @@ export function ScannerTable({ rows, compact = false }: { rows: FlipCandidate[];
                 <td className="px-2 py-1.5">
                   <div className="flex items-center">
                     <WatchButton itemId={c.id} name={c.name} />
-                    <Link href={calcHref(c)} className="rounded p-1 text-faint hover:text-text" aria-label={`${c.name} im Rechner öffnen`}>
+                    <Link href={calcHref(c)} className="rounded p-1 text-faint hover:text-text" aria-label={`Open ${c.name} in calculator`}>
                       <Calculator className="size-4" />
                     </Link>
                   </div>
@@ -172,7 +172,7 @@ export function ScannerTable({ rows, compact = false }: { rows: FlipCandidate[];
             </div>
             <div className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
               <div>
-                <div className="text-faint">Marge netto<Est /></div>
+                <div className="text-faint">Net margin<Est /></div>
                 <Gp value={c.netMargin} colored />
               </div>
               <div>
@@ -180,26 +180,26 @@ export function ScannerTable({ rows, compact = false }: { rows: FlipCandidate[];
                 <Pct value={c.roi} />
               </div>
               <div>
-                <div className="text-faint">Gewinn @ Kap.</div>
+                <div className="text-faint">Profit @ cap.</div>
                 <Gp value={c.profitAtCapital} short colored />
               </div>
               <div>
-                <div className="text-faint">Inst.-Buy / Sell</div>
+                <div className="text-faint">Inst. buy / sell</div>
                 <span className="num">{gpShort(c.latestHigh)} / {gpShort(c.latestLow)}</span>
               </div>
               <div>
-                <div className="text-faint">Menge / Limit</div>
+                <div className="text-faint">Qty / limit</div>
                 <span className="num">{c.qty.toLocaleString("de-CH")} / {c.limit != null ? c.limit.toLocaleString("de-CH") : "–"}</span>
               </div>
               <div>
-                <div className="text-faint">Alter</div>
+                <div className="text-faint">Age</div>
                 <Age seconds={c.ageSec} />
               </div>
             </div>
             <div className="mt-1.5 flex flex-wrap gap-1">
               <RiskBadge r={c.risk} />
               <QualityBadge q={c.quality} />
-              {c.taxExempt && <Badge tone="pos">steuerfrei</Badge>}
+              {c.taxExempt && <Badge tone="pos">tax-free</Badge>}
             </div>
           </li>
         ))}

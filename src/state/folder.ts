@@ -108,7 +108,7 @@ export const useFolderStore = create<FolderState>((set, get) => ({
       if ((err as DOMException)?.name === "AbortError") return; // Dialog abgebrochen
       return set({ status: "error", lastError: errMsg(err) });
     }
-    if (!(await hasPermission(h, true))) return set({ status: "needs-permission", lastError: "Schreibzugriff auf den Ordner wurde nicht erlaubt." });
+    if (!(await hasPermission(h, true))) return set({ status: "needs-permission", lastError: "Write access to the folder was not allowed." });
     handle = h;
     let remembered = true;
     try {
@@ -116,21 +116,21 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     } catch {
       remembered = false; // z. B. Browser ohne Unterstützung für gespeicherte Ordner-Handles
     }
-    set({ folderName: h.name, lastError: remembered ? null : "Der Ordner kann in diesem Browser nicht dauerhaft gemerkt werden – nach einem Neustart bitte erneut wählen." });
+    set({ folderName: h.name, lastError: remembered ? null : "This browser can’t remember the folder permanently – please choose it again after a restart." });
     try {
       const r = await readFolderData(h);
-      if (r.kind === "invalid") return set({ status: "error", lastError: `Die Datei ${DATA_FILE} im Ordner ist ungültig: ${r.errors.join(" ")}` });
+      if (r.kind === "invalid") return set({ status: "error", lastError: `The file ${DATA_FILE} in the folder is invalid: ${r.errors.join(" ")}` });
       if (r.kind === "ok") {
         knownModified = r.lastModified;
         if (hasLocalData() && !sameData(r.backup, currentBackup())) return set({ status: "connected", conflict: { backup: r.backup } });
         await applyBackup(r.backup);
         set({ status: "connected", lastSavedAt: r.lastModified });
-        toast(`Daten aus Ordner „${h.name}“ geladen.`, "pos");
+        toast(`Data loaded from folder “${h.name}”.`, "pos");
         return;
       }
       set({ status: "connected" });
       await get().saveNow();
-      toast(`Ordner „${h.name}“ verbunden – Daten werden dort gespeichert.`, "pos");
+      toast(`Folder “${h.name}” connected – data will be saved there.`, "pos");
     } catch (err) {
       set({ status: "error", lastError: errMsg(err) });
     }
@@ -139,7 +139,7 @@ export const useFolderStore = create<FolderState>((set, get) => ({
   reconnect: async () => {
     if (!handle) return get().connect();
     try {
-      if (!(await hasPermission(handle, true))) return set({ status: "needs-permission", lastError: "Zugriff nicht erlaubt." });
+      if (!(await hasPermission(handle, true))) return set({ status: "needs-permission", lastError: "Access not allowed." });
       await syncFromFolder(set);
     } catch (err) {
       set({ status: "error", lastError: errMsg(err) });
@@ -150,7 +150,7 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     handle = null;
     await deleteMeta(HANDLE_KEY);
     set({ status: "none", folderName: null, lastSavedAt: null, lastError: null, conflict: null });
-    toast("Ordner getrennt. Daten bleiben im Browser gespeichert.");
+    toast("Folder disconnected. Data stays saved in the browser.");
   },
 
   resolveConflict: async (keep) => {
@@ -159,10 +159,10 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     set({ conflict: null });
     if (keep === "folder") {
       await applyBackup(c.backup);
-      toast("Daten aus dem Ordner geladen.", "pos");
+      toast("Data loaded from the folder.", "pos");
     } else {
       await get().saveNow();
-      toast("Aktuelle Daten in den Ordner gespeichert.", "pos");
+      toast("Current data saved to the folder.", "pos");
     }
   },
 
@@ -182,8 +182,8 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     } catch (err) {
       const msg = errMsg(err);
       const perm = /permission|NotAllowed/i.test(msg) || (err as DOMException)?.name === "NotAllowedError";
-      set({ saving: false, lastError: `Speichern im Ordner fehlgeschlagen: ${msg}`, status: perm ? "needs-permission" : "error" });
-      toast("Speichern im Ordner fehlgeschlagen – Daten sind weiterhin im Browser gesichert.", "neg");
+      set({ saving: false, lastError: `Saving to the folder failed: ${msg}`, status: perm ? "needs-permission" : "error" });
+      toast("Saving to the folder failed – data is still safe in the browser.", "neg");
     }
   },
 
@@ -193,7 +193,7 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     const lm = await fileLastModified(handle);
     if (lm != null && lm > knownModified + 1000) {
       await syncFromFolder(set);
-      toast("Datendatei wurde ausserhalb der App geändert – neu geladen.");
+      toast("Data file was changed outside the app – reloaded.");
     }
   },
 }));
@@ -204,7 +204,7 @@ async function syncFromFolder(set: (p: Partial<FolderState>) => void) {
     const r = await readFolderData(handle);
     if (r.kind === "invalid") {
       // Niemals eine ungültige Datei überschreiben – Nutzer entscheidet
-      return set({ status: "error", lastError: `Die Datei ${DATA_FILE} ist ungültig und wurde nicht geladen: ${r.errors.join(" ")}` });
+      return set({ status: "error", lastError: `The file ${DATA_FILE} is invalid and was not loaded: ${r.errors.join(" ")}` });
     }
     if (r.kind === "ok") {
       knownModified = r.lastModified;

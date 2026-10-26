@@ -7,13 +7,13 @@ export const Tabs = T.Root;
 export const TabsContent = T.Content;
 
 export function TabsList({ className, ...props }: React.ComponentProps<typeof T.List>) {
-  return <T.List className={cn("inline-flex rounded-md border border-border bg-surface-2 p-0.5", className)} {...props} />;
+  return <T.List className={cn("inline-flex rounded-full border border-border bg-surface-2 p-1", className)} {...props} />;
 }
 
 export function TabsTrigger({ className, ...props }: React.ComponentProps<typeof T.Trigger>) {
   return (
     <T.Trigger
-      className={cn("rounded px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:text-text data-[state=active]:bg-surface-3 data-[state=active]:text-text", className)}
+      className={cn("rounded-full px-3 py-1 text-xs font-semibold text-muted transition-colors hover:text-text data-[state=active]:bg-accent data-[state=active]:text-accent-fg data-[state=active]:shadow-card", className)}
       {...props}
     />
   );

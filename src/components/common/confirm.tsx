@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 /** Bestätigungsdialog (statt Browser-confirm) */
-export function Confirm({ trigger, title, text, confirmLabel = "Löschen", onConfirm }: { trigger: (open: () => void) => ReactNode; title: string; text: ReactNode; confirmLabel?: string; onConfirm: () => void | Promise<void> }) {
+export function Confirm({ trigger, title, text, confirmLabel = "Delete", onConfirm }: { trigger: (open: () => void) => ReactNode; title: string; text: ReactNode; confirmLabel?: string; onConfirm: () => void | Promise<void> }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -14,7 +14,7 @@ export function Confirm({ trigger, title, text, confirmLabel = "Löschen", onCon
           <div className="text-sm text-muted">{text}</div>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setOpen(false)}>
-              Abbrechen
+              Cancel
             </Button>
             <Button
               variant="danger"

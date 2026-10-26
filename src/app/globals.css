@@ -2,51 +2,69 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/*
+ * Hell = Pergament-Braun wie im OSRS Wiki, Dunkel = warmes Holz/Leder wie das Spiel-Interface.
+ * Standard ist Hell.
+ */
 :root,
-[data-theme="dark"] {
-  --bg: #0e1013;
-  --surface: #15181d;
-  --surface-2: #1b1f26;
-  --surface-3: #232831;
-  --border: #272d36;
-  --border-strong: #353c47;
-  --text: #e4e7eb;
-  --muted: #8a93a1;
-  --faint: #5d6573;
-  --pos: #3fb87f;
-  --pos-soft: rgba(63, 184, 127, 0.12);
-  --neg: #e2595a;
-  --neg-soft: rgba(226, 89, 90, 0.12);
-  --warn: #d6a243;
-  --warn-soft: rgba(214, 162, 67, 0.12);
-  --accent: #d9b44a;
-  --accent-soft: rgba(217, 180, 74, 0.12);
-  --info: #5b9bd5;
-  --chart-grid: #1f242c;
-  color-scheme: dark;
+[data-theme="light"] {
+  --bg: #c8b28c;
+  --surface: #e9e0c9;
+  --surface-2: #dfd3b6;
+  --surface-3: #d2c19e;
+  --border: #b9a37b;
+  --border-strong: #94805d;
+  --text: #2b2013;
+  --muted: #5f4c33;
+  --faint: #826d4e;
+  --pos: #2f7d2c;
+  --pos-soft: rgba(47, 125, 44, 0.14);
+  --neg: #b3352b;
+  --neg-soft: rgba(179, 53, 43, 0.12);
+  --warn: #9b5e06;
+  --warn-soft: rgba(196, 128, 18, 0.16);
+  --accent: #a55d16;
+  --accent-fg: #fff7e6;
+  --accent-soft: rgba(165, 93, 22, 0.14);
+  --gold: #e3a92a;
+  --info: #2d6a9f;
+  --info-soft: rgba(45, 106, 159, 0.13);
+  --violet: #7b4fa6;
+  --violet-soft: rgba(123, 79, 166, 0.13);
+  --chart-grid: #d6c8a8;
+  --shadow: 0 1px 0 rgba(255, 250, 235, 0.6) inset, 0 2px 6px rgba(74, 52, 22, 0.14);
+  --header-bg: rgba(200, 178, 140, 0.88);
+  color-scheme: light;
 }
 
-[data-theme="light"] {
-  --bg: #f4f5f7;
-  --surface: #ffffff;
-  --surface-2: #f7f8fa;
-  --surface-3: #eceef2;
-  --border: #e1e4e9;
-  --border-strong: #cdd2da;
-  --text: #1b1f25;
-  --muted: #5d6573;
-  --faint: #8a93a1;
-  --pos: #1f8a5a;
-  --pos-soft: rgba(31, 138, 90, 0.1);
-  --neg: #c4383a;
-  --neg-soft: rgba(196, 56, 58, 0.1);
-  --warn: #a8761b;
-  --warn-soft: rgba(168, 118, 27, 0.12);
-  --accent: #9a7414;
-  --accent-soft: rgba(154, 116, 20, 0.1);
-  --info: #2f6fb0;
-  --chart-grid: #eceef2;
-  color-scheme: light;
+[data-theme="dark"] {
+  --bg: #1d1712;
+  --surface: #2a221a;
+  --surface-2: #33291f;
+  --surface-3: #3e3227;
+  --border: #4a3c2e;
+  --border-strong: #625040;
+  --text: #f4ead4;
+  --muted: #c4b192;
+  --faint: #8e7c62;
+  --pos: #6fd56b;
+  --pos-soft: rgba(111, 213, 107, 0.14);
+  --neg: #ff7563;
+  --neg-soft: rgba(255, 117, 99, 0.14);
+  --warn: #ffc14d;
+  --warn-soft: rgba(255, 193, 77, 0.14);
+  --accent: #ffad33;
+  --accent-fg: #2a1805;
+  --accent-soft: rgba(255, 173, 51, 0.15);
+  --gold: #ffcf4a;
+  --info: #7cb8ff;
+  --info-soft: rgba(124, 184, 255, 0.14);
+  --violet: #c39bff;
+  --violet-soft: rgba(195, 155, 255, 0.14);
+  --chart-grid: #362b21;
+  --shadow: 0 1px 0 rgba(255, 230, 190, 0.05) inset, 0 2px 8px rgba(0, 0, 0, 0.35);
+  --header-bg: rgba(29, 23, 18, 0.88);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -67,7 +85,13 @@
   --color-warn-soft: var(--warn-soft);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-gold: var(--gold);
   --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --shadow-card: var(--shadow);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
@@ -120,6 +144,13 @@ body {
 }
 .animate-fade-in {
   animation: fade-in 160ms ease-out;
+}
+
+/* Goldmünze im Logo */
+.coin {
+  background: radial-gradient(circle at 35% 30%, #fff1b8 0%, var(--gold) 45%, #b97a12 100%);
+  box-shadow: 0 0 0 1px rgba(120, 76, 10, 0.5), 0 2px 4px rgba(120, 76, 10, 0.35);
+  color: #4a2e05;
 }
 
 /* Tabellen */

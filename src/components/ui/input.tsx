@@ -3,7 +3,7 @@ import * as React from "react";
 import { cn, parseAmount } from "@/lib/utils";
 
 export const inputClass =
-  "h-8 w-full rounded-md border border-border bg-surface-2 px-2.5 text-sm text-text placeholder:text-faint focus:border-accent focus:outline-none disabled:opacity-60";
+  "h-9 w-full rounded-lg border border-border bg-surface-2 px-2.5 text-sm text-text placeholder:text-faint focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none disabled:opacity-60";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...props }, ref) => (
   <input ref={ref} className={cn(inputClass, className)} {...props} />

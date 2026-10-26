@@ -20,6 +20,7 @@ import { useFolderStore } from "@/state/folder";
 import { toast } from "@/state/toasts";
 
 const STATUS_TONE: Record<TradeStatus, "neutral" | "info" | "warn" | "pos"> = { leer: "neutral", offen: "info", teilweise: "warn", geschlossen: "pos" };
+const STATUS_LABEL: Record<TradeStatus, string> = { leer: "empty", offen: "open", teilweise: "partly sold", geschlossen: "closed" };
 
 export default function HistoryPage() {
   const { trades, loaded, error, deleteTrade } = useDataStore();
@@ -72,68 +73,68 @@ export default function HistoryPage() {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Flip-Historie"
-        description="Alle erfassten Trades mit Teilverkäufen, mehreren Kaufchargen und FIFO-Gewinnberechnung. Daten werden nur lokal in diesem Browser gespeichert."
+        title="Flip History"
+        description="All logged trades with partial sales, multiple buys and FIFO profit. Data is only stored locally."
         actions={
           <Button variant="primary" onClick={() => setEditing({ draft: emptyTrade() })} data-testid="new-trade">
-            <Plus /> Trade erfassen
+            <Plus /> Log trade
           </Button>
         }
       />
 
       {folder.status === "connected" ? (
         <p className="mb-2 text-xs text-muted" data-testid="history-folder">
-          Gespeichert im Ordner <b className="text-text">„{folder.folderName}“</b> (osrs-ge-flipper-daten.json + trades.csv).
+          Saved in the folder <b className="text-text">“{folder.folderName}”</b> (osrs-ge-flipper-daten.json + trades.csv).
         </p>
       ) : folder.status === "needs-permission" ? (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-xs text-warn">
-          Zugriff auf den Ordner „{folder.folderName}“ muss bestätigt werden, sonst wird nur im Browser gespeichert.
-          <Button size="sm" variant="outline" onClick={() => void folder.reconnect()}>Zugriff erlauben</Button>
+          Access to the folder “{folder.folderName}” needs to be confirmed, otherwise data is only saved in the browser.
+          <Button size="sm" variant="outline" onClick={() => void folder.reconnect()}>Allow access</Button>
         </div>
       ) : folder.status === "none" ? (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
-          Deine Trades liegen nur im Browser-Speicher. Wähle einen Ordner auf deinem Computer, um sie dort als Datei zu speichern.
-          <Button size="sm" variant="primary" onClick={() => void folder.connect()} data-testid="history-pick-folder">Ordner wählen</Button>
+          Your trades are only stored in the browser. Pick a folder on your computer to save them there as a file.
+          <Button size="sm" variant="primary" onClick={() => void folder.connect()} data-testid="history-pick-folder">Choose folder</Button>
         </div>
       ) : null}
 
       <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label="Trades (gefiltert)" value={totals.count} />
-        <Stat label="Realisiert netto" value={<Gp value={totals.realized} short colored />} hint="FIFO, nach GE-Steuer und Gebühren" />
-        <Stat label="Geschlossen" value={totals.closed} />
-        <Stat label="Erfolgsquote" value={totals.closed ? `${Math.round((totals.wins / totals.closed) * 100)} %` : "–"} sub="geschlossene Flips mit Gewinn" />
+        <Stat label="Trades (filtered)" value={totals.count} />
+        <Stat label="Realised profit" value={<Gp value={totals.realized} short colored />} hint="FIFO, after GE tax and fees" />
+        <Stat label="Closed" value={totals.closed} />
+        <Stat label="Win rate" value={totals.closed ? `${Math.round((totals.wins / totals.closed) * 100)}%` : "–"} sub="closed flips with a profit" />
       </div>
 
       <Card className="mb-3 grid grid-cols-2 gap-2 p-3 sm:grid-cols-6">
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Item filtern…" aria-label="Nach Item filtern" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter items…" aria-label="Filter by item" />
         <Select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Status">
-          <option value="">Alle Status</option>
-          <option value="offen">offen</option>
-          <option value="teilweise">teilweise verkauft</option>
-          <option value="geschlossen">geschlossen</option>
+          <option value="">All statuses</option>
+          <option value="offen">open</option>
+          <option value="teilweise">partly sold</option>
+          <option value="geschlossen">closed</option>
         </Select>
-        <Select value={result} onChange={(e) => setResult(e.target.value as typeof result)} aria-label="Ergebnis">
-          <option value="">Alle Ergebnisse</option>
-          <option value="win">Gewinn</option>
-          <option value="loss">Verlust</option>
+        <Select value={result} onChange={(e) => setResult(e.target.value as typeof result)} aria-label="Result">
+          <option value="">All results</option>
+          <option value="win">Profit</option>
+          <option value="loss">Loss</option>
         </Select>
-        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Von Datum" />
-        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Bis Datum" />
-        <Select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sortierung">
-          <option value="date">Neueste zuerst</option>
-          <option value="realized">Höchster Gewinn</option>
-          <option value="roi">Höchster ROI</option>
+        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From date" />
+        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To date" />
+        <Select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sort by">
+          <option value="date">Newest first</option>
+          <option value="realized">Highest profit</option>
+          <option value="roi">Highest ROI</option>
         </Select>
       </Card>
 
       <Card className="overflow-hidden">
-        {error && <div className="p-4 text-sm text-neg">Lokaler Speicher nicht verfügbar: {error}</div>}
+        {error && <div className="p-4 text-sm text-neg">Local storage unavailable: {error}</div>}
         {loaded && trades.length === 0 ? (
-          <EmptyState title="Noch keine Trades erfasst" action={<Button variant="primary" onClick={() => setEditing({ draft: emptyTrade() })}><Plus /> Ersten Trade erfassen</Button>}>
-            Erfasse Käufe und Verkäufe, um realisierte Gewinne, ROI und Erfolgsquote zu verfolgen.
+          <EmptyState title="No trades logged yet" action={<Button variant="primary" onClick={() => setEditing({ draft: emptyTrade() })}><Plus /> Log your first trade</Button>}>
+            Log buys and sells to track realised profit, ROI and win rate.
           </EmptyState>
         ) : rows.length === 0 ? (
-          <EmptyState title="Keine Trades entsprechen den Filtern" />
+          <EmptyState title="No trades match the filters" />
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table w-full text-sm" data-testid="trades-table">
@@ -142,12 +143,12 @@ export default function HistoryPage() {
                   <th className="w-6" />
                   <th className="px-2 py-2 font-medium">Item</th>
                   <th className="px-2 py-2 font-medium">Status</th>
-                  <th className="px-2 py-2 text-right font-medium">Gek. / Verk. / Offen</th>
-                  <th className="px-2 py-2 text-right font-medium">Ø Kauf</th>
-                  <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">Erlös netto</th>
-                  <th className="px-2 py-2 text-right font-medium">Realisiert</th>
+                  <th className="px-2 py-2 text-right font-medium">Bought / sold / open</th>
+                  <th className="px-2 py-2 text-right font-medium">Avg buy</th>
+                  <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">Net proceeds</th>
+                  <th className="px-2 py-2 text-right font-medium">Realised</th>
                   <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">ROI</th>
-                  <th className="hidden px-2 py-2 font-medium lg:table-cell">Letzte Aktivität</th>
+                  <th className="hidden px-2 py-2 font-medium lg:table-cell">Last activity</th>
                   <th className="px-2 py-2" />
                 </tr>
               </thead>
@@ -169,7 +170,7 @@ export default function HistoryPage() {
                             <span className="max-w-[180px] truncate">{t.itemName}</span>
                           </Link>
                         </td>
-                        <td className="px-2 py-1.5"><Badge tone={STATUS_TONE[s.status]}>{s.status}</Badge></td>
+                        <td className="px-2 py-1.5"><Badge tone={STATUS_TONE[s.status]}>{STATUS_LABEL[s.status]}</Badge></td>
                         <td className="px-2 py-1.5 text-right num">{s.boughtQty} / {s.soldQty} / {s.openQty}</td>
                         <td className="px-2 py-1.5 text-right"><Gp value={s.avgBuyPrice} /></td>
                         <td className="hidden px-2 py-1.5 text-right sm:table-cell"><Gp value={s.proceedsNet} short /></td>
@@ -179,22 +180,22 @@ export default function HistoryPage() {
                         <td className="px-2 py-1.5">
                           <div className="flex justify-end">
                             {s.openQty > 0 && (
-                              <Button size="sm" variant="outline" onClick={() => startSale(t)} aria-label="Verkauf erfassen" data-testid="sell-trade">
-                                <HandCoins /> Verkaufen
+                              <Button size="sm" variant="outline" onClick={() => startSale(t)} aria-label="Log sale" data-testid="sell-trade">
+                                <HandCoins /> Sell
                               </Button>
                             )}
-                            <Button size="icon" variant="ghost" onClick={() => setEditing({ draft: t })} aria-label="Trade bearbeiten" data-testid="edit-trade">
+                            <Button size="icon" variant="ghost" onClick={() => setEditing({ draft: t })} aria-label="Edit trade" data-testid="edit-trade">
                               <Pencil />
                             </Button>
                             <Confirm
-                              title="Trade löschen?"
-                              text={`Der Trade „${t.itemName}“ mit allen Chargen und Verkäufen wird unwiderruflich aus diesem Browser gelöscht.`}
+                              title="Delete trade?"
+                              text={`The trade “${t.itemName}” with all its buys and sales will be permanently deleted.`}
                               onConfirm={async () => {
                                 await deleteTrade(t.id);
-                                toast("Trade gelöscht.");
+                                toast("Trade deleted.");
                               }}
                               trigger={(o) => (
-                                <Button size="icon" variant="ghost" onClick={o} aria-label="Trade löschen">
+                                <Button size="icon" variant="ghost" onClick={o} aria-label="Delete trade">
                                   <Trash2 />
                                 </Button>
                               )}
@@ -207,41 +208,41 @@ export default function HistoryPage() {
                           <td colSpan={10} className="px-4 py-3">
                             <div className="grid gap-4 text-xs lg:grid-cols-3">
                               <div>
-                                <div className="mb-1 font-semibold text-muted">Kaufchargen</div>
+                                <div className="mb-1 font-semibold text-muted">Buys</div>
                                 {t.lots.map((l) => (
                                   <div key={l.id} className="flex justify-between gap-2 num">
                                     <span>{dateTime(l.date)}</span>
-                                    <span>{l.quantity} × {gpShort(l.price)}{l.fees ? ` + ${gpShort(l.fees)} Geb.` : ""}</span>
+                                    <span>{l.quantity} × {gpShort(l.price)}{l.fees ? ` + ${gpShort(l.fees)} fees` : ""}</span>
                                   </div>
                                 ))}
-                                {s.openLots.length > 0 && <div className="mt-1 text-faint">Offener Einstand (FIFO): <Gp value={s.openCostBasis} /></div>}
+                                {s.openLots.length > 0 && <div className="mt-1 text-faint">Open cost basis (FIFO): <Gp value={s.openCostBasis} /></div>}
                               </div>
                               <div>
-                                <div className="mb-1 font-semibold text-muted">Verkäufe (FIFO-Zuordnung)</div>
-                                {s.sales.length === 0 && <div className="text-faint">Keine</div>}
+                                <div className="mb-1 font-semibold text-muted">Sales (FIFO matching)</div>
+                                {s.sales.length === 0 && <div className="text-faint">None</div>}
                                 {s.sales.map((x) => (
                                   <div key={x.saleId} className="mb-1">
                                     <div className="flex justify-between gap-2 num">
                                       <span>{dateTime(x.date)}</span>
-                                      <span>{x.quantity} × {gpShort(x.price)} · Steuer {gpShort(x.tax)}{x.taxIsActual ? "" : " (ber.)"}</span>
+                                      <span>{x.quantity} × {gpShort(x.price)} · tax {gpShort(x.tax)}{x.taxIsActual ? "" : " (calc.)"}</span>
                                     </div>
                                     <div className="flex justify-between text-faint">
-                                      <span>Einstand <Gp value={x.costBasis} /> · Haltedauer Ø {duration(x.matches.reduce((a, m) => a + m.holdMs * m.quantity, 0) / Math.max(1, x.matchedQuantity))}</span>
+                                      <span>Cost <Gp value={x.costBasis} /> · avg hold {duration(x.matches.reduce((a, m) => a + m.holdMs * m.quantity, 0) / Math.max(1, x.matchedQuantity))}</span>
                                       <Gp value={x.realized} colored />
                                     </div>
                                   </div>
                                 ))}
                               </div>
                               <div>
-                                <div className="mb-1 font-semibold text-muted">Änderungshistorie</div>
+                                <div className="mb-1 font-semibold text-muted">Change history</div>
                                 {t.history.slice(-8).reverse().map((h, i) => (
                                   <div key={i} className="flex justify-between gap-2">
                                     <span className="text-faint">{dateTime(h.at)}</span>
                                     <span>{h.action}: {h.detail}</span>
                                   </div>
                                 ))}
-                                {t.notes && <div className="mt-2 text-muted">Notiz: {t.notes}</div>}
-                                {s.reservedForOffers > 0 && <div className="mt-2 text-muted">Reserviert für Kaufangebote: <Gp value={s.reservedForOffers} /></div>}
+                                {t.notes && <div className="mt-2 text-muted">Note: {t.notes}</div>}
+                                {s.reservedForOffers > 0 && <div className="mt-2 text-muted">Reserved for buy offers: <Gp value={s.reservedForOffers} /></div>}
                               </div>
                             </div>
                           </td>

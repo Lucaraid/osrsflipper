@@ -180,14 +180,14 @@ export function checkPositionRules(p: PortfolioSummary, rules: PositionRules, ge
   const w: RuleWarning[] = [];
   for (const pos of p.positions) {
     if (rules.maxCapitalPerItem != null && pos.costBasis > rules.maxCapitalPerItem)
-      w.push({ rule: "maxCapitalPerItem", text: `${pos.itemName}: gebundenes Kapital über dem Maximum pro Item.` });
+      w.push({ rule: "maxCapitalPerItem", text: `${pos.itemName}: capital in this item is above the per-item maximum.` });
     if (rules.maxPositionPct != null && pos.share != null && pos.share > rules.maxPositionPct)
       w.push({ rule: "maxPositionPct", text: `${pos.itemName}: ${(pos.share * 100).toFixed(1)} % des Portfolios (Maximum ${(rules.maxPositionPct * 100).toFixed(0)} %).` });
   }
   if (rules.maxOpenPositions != null && p.positions.length > rules.maxOpenPositions)
     w.push({ rule: "maxOpenPositions", text: `${p.positions.length} offene Positionen (Maximum ${rules.maxOpenPositions}).` });
   if (rules.minReserve != null && p.available < rules.minReserve)
-    w.push({ rule: "minReserve", text: `Verfügbares Kapital unter der Mindestreserve.` });
-  if (offersCount > geSlots) w.push({ rule: "geSlots", text: `${offersCount} offene Kaufangebote, aber nur ${geSlots} GE-Slots.` });
+    w.push({ rule: "minReserve", text: `Available capital is below the minimum reserve.` });
+  if (offersCount > geSlots) w.push({ rule: "geSlots", text: `${offersCount} open buy offers but only ${geSlots} GE slots.` });
   return w;
 }

@@ -46,18 +46,18 @@ export default function ScannerPage() {
     <div className="animate-fade-in">
       <PageHeader
         title="Flip Scanner"
-        description="Bewertet alle gehandelten Items anhand zuletzt beobachteter Preise, Volumen und Datenqualität. Alle Gewinne sind Schätzungen – eine Ausführung ist nicht garantiert."
+        description="Rates every traded item by last observed prices, volume and data quality. All profits are estimates – fills are not guaranteed."
       />
 
       <Card className="mb-3 p-3">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          <Field label="Verfügbares Kapital (gp)" hint={capital == null ? `Standard aus Einstellungen: ${gp(settings.defaultCapital)}` : undefined}>
-            <AmountInput value={capital} onChange={setCapital} placeholder={gp(settings.defaultCapital)} aria-label="Verfügbares Kapital" data-testid="scanner-capital" />
+          <Field label="Available capital (gp)" hint={capital == null ? `Default from settings: ${gp(settings.defaultCapital)}` : undefined}>
+            <AmountInput value={capital} onChange={setCapital} placeholder={gp(settings.defaultCapital)} aria-label="Available capital" data-testid="scanner-capital" />
           </Field>
-          <Field label="Allokation pro Item (%)" hint={`= ${gp(effCapital)} gp pro Flip`}>
-            <Input type="number" min={1} max={100} value={allocation} onChange={(e) => setAllocation(Number(e.target.value) || 100)} aria-label="Allokation in Prozent" />
+          <Field label="Allocation per item (%)" hint={`= ${gp(effCapital)} gp per flip`}>
+            <Input type="number" min={1} max={100} value={allocation} onChange={(e) => setAllocation(Number(e.target.value) || 100)} aria-label="Allocation in percent" />
           </Field>
-          <Field label="Sortierung">
+          <Field label="Sort by">
             <Select
               value={sort}
               onChange={(e) => {
@@ -65,7 +65,7 @@ export default function ScannerPage() {
                 setSort(v);
                 update({ scannerSort: v });
               }}
-              aria-label="Sortierung"
+              aria-label="Sort by"
               data-testid="scanner-sort"
             >
               {SORT_KEYS.map((k) => (
@@ -75,7 +75,7 @@ export default function ScannerPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Gespeicherte Filter">
+          <Field label="Saved filters">
             <Select
               value=""
               onChange={(e) => {
@@ -83,12 +83,12 @@ export default function ScannerPage() {
                 if (p) {
                   changeFilters(p.filters);
                   setSort(p.sort);
-                  toast(`Filter „${p.name}“ geladen.`);
+                  toast(`Filter “${p.name}” loaded.`);
                 }
               }}
-              aria-label="Gespeicherte Filter laden"
+              aria-label="Load saved filter"
             >
-              <option value="">{settings.savedFilters.length ? "Laden…" : "Keine gespeichert"}</option>
+              <option value="">{settings.savedFilters.length ? "Load…" : "None saved"}</option>
               {settings.savedFilters.map((p) => (
                 <option key={p.name} value={p.name}>
                   {p.name}
@@ -98,7 +98,7 @@ export default function ScannerPage() {
           </Field>
           <div className="col-span-2 flex items-end gap-2">
             <Button variant={showFilters ? "secondary" : "outline"} onClick={() => setShowFilters((s) => !s)} data-testid="toggle-filters">
-              <Filter /> Filter{JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS) ? " (aktiv)" : ""}
+              <Filter /> Filter{JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS) ? " (active)" : ""}
             </Button>
           </div>
         </div>
@@ -106,8 +106,8 @@ export default function ScannerPage() {
           <div className="mt-3 border-t border-border pt-3">
             <ScannerFilterPanel value={filters} onChange={changeFilters} />
             <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-border pt-3">
-              <Field label="Aktuelle Filter speichern als">
-                <Input value={presetName} onChange={(e) => setPresetName(e.target.value)} placeholder="z. B. Low-Risk 10M" className="w-56" />
+              <Field label="Save current filters as">
+                <Input value={presetName} onChange={(e) => setPresetName(e.target.value)} placeholder="e.g. Low-risk 10M" className="w-56" />
               </Field>
               <Button
                 variant="outline"
@@ -116,10 +116,10 @@ export default function ScannerPage() {
                   const name = presetName.trim().slice(0, 60);
                   update({ savedFilters: [...settings.savedFilters.filter((p) => p.name !== name), { name, filters, sort }] });
                   setPresetName("");
-                  toast(`Filter „${name}“ gespeichert.`, "pos");
+                  toast(`Filter “${name}” saved.`, "pos");
                 }}
               >
-                <Save /> Speichern
+                <Save /> Save
               </Button>
               {settings.savedFilters.length > 0 && (
                 <Select
@@ -128,11 +128,11 @@ export default function ScannerPage() {
                   onChange={(e) => {
                     if (!e.target.value) return;
                     update({ savedFilters: settings.savedFilters.filter((p) => p.name !== e.target.value) });
-                    toast(`Filter „${e.target.value}“ gelöscht.`);
+                    toast(`Filter “${e.target.value}” deleted.`);
                   }}
-                  aria-label="Gespeicherten Filter löschen"
+                  aria-label="Delete saved filter"
                 >
-                  <option value="">Gespeicherten Filter löschen…</option>
+                  <option value="">Delete saved filter…</option>
                   {settings.savedFilters.map((p) => (
                     <option key={p.name} value={p.name}>
                       {p.name}
@@ -148,22 +148,22 @@ export default function ScannerPage() {
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
         <span data-testid="scanner-count">
-          {result.length.toLocaleString("de-CH")} von {candidates.length.toLocaleString("de-CH")} Items
-          {market.data && ` · 24h-Basis: ${market.data.meta.day.blocksLoaded}/24 Stundenblöcke`}
+          {result.length.toLocaleString("de-CH")} of {candidates.length.toLocaleString("de-CH")} items
+          {market.data && ` · 24h basis: ${market.data.meta.day.blocksLoaded}/24 hourly blocks`}
         </span>
-        <span>Kauf = Instant-Sell + {settings.priceOffset} gp, Verkauf = Instant-Buy − {settings.priceOffset} gp · Steuer 2 % (max. 5M/Stk)</span>
+        <span>Buy = instant-sell + {settings.priceOffset} gp, sell = instant-buy − {settings.priceOffset} gp · tax 2% (max 5M/item)</span>
       </div>
 
       {market.data && market.data.meta.day.blocksLoaded < 24 && (
         <div className="mb-2">
-          <InfoNote tone="warn">Die 24h-Historie wird noch geladen ({market.data.meta.day.blocksLoaded}/24 Stunden). Volumen-, Risiko- und Qualitätswerte sind bis dahin weniger aussagekräftig.</InfoNote>
+          <InfoNote tone="warn">The 24h history is still loading ({market.data.meta.day.blocksLoaded}/24 hours). Volume, risk and quality values are less reliable until then.</InfoNote>
         </div>
       )}
 
       <Card className="overflow-hidden">
         {error && !candidates.length ? (
           <div className="p-4">
-            <ErrorNote>Marktdaten konnten nicht geladen werden: {error.message}. Es werden keine Ersatzdaten angezeigt.</ErrorNote>
+            <ErrorNote>Market data could not be loaded: {error.message}. No substitute data is shown.</ErrorNote>
           </div>
         ) : isLoading ? (
           <div className="space-y-2 p-4">
@@ -172,20 +172,20 @@ export default function ScannerPage() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <EmptyState title="Keine Items entsprechen den Filtern">Passe die Filter an oder setze sie zurück.</EmptyState>
+          <EmptyState title="No items match the filters">Adjust the filters or reset them.</EmptyState>
         ) : (
           <ScannerTable rows={visible} />
         )}
         {result.length > PAGE && (
           <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted">
             <span>
-              Seite {current + 1} von {pages}
+              Page {current + 1} of {pages}
             </span>
             <div className="flex gap-1">
-              <Button size="sm" variant="outline" disabled={current === 0} onClick={() => setPage(current - 1)} aria-label="Vorherige Seite">
+              <Button size="sm" variant="outline" disabled={current === 0} onClick={() => setPage(current - 1)} aria-label="Previous page">
                 <ChevronLeft />
               </Button>
-              <Button size="sm" variant="outline" disabled={current >= pages - 1} onClick={() => setPage(current + 1)} aria-label="Nächste Seite">
+              <Button size="sm" variant="outline" disabled={current >= pages - 1} onClick={() => setPage(current + 1)} aria-label="Next page">
                 <ChevronRight />
               </Button>
             </div>
@@ -193,7 +193,7 @@ export default function ScannerPage() {
         )}
       </Card>
       <p className="mt-2 text-[11px] text-faint">
-        Ranking-Methodik und Gewichtung: siehe <a className="underline" href="/methodik">Methodik</a>. Hohe Werte bedeuten keine Gewinnwahrscheinlichkeit. Historische Liquidität garantiert keine künftige Ausführung.
+        Ranking method and weights: see <a className="underline" href="/methodology">Methodology</a>. A high score is not a probability of profit. Past liquidity doesn’t guarantee future fills.
       </p>
     </div>
   );

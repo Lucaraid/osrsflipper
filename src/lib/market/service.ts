@@ -102,7 +102,7 @@ export class MarketService {
 
     if (!latest) {
       // Ohne /latest gibt es keine Marktdaten → Fehler weiterreichen (Route liefert 503, UI zeigt Hinweis).
-      throw new Error(`Marktdaten nicht verfügbar: ${latestR.status === "rejected" ? msg(latestR.reason) : "unbekannt"}`);
+      throw new Error(`Market data unavailable: ${latestR.status === "rejected" ? msg(latestR.reason) : "unknown"}`);
     }
 
     // 24h-Fenster aus Stundenblöcken
@@ -118,7 +118,7 @@ export class MarketService {
       }
       blocks.push(hour.value.map);
     } else {
-      dayError = "Stundendaten nicht verfügbar";
+      dayError = "Hourly data unavailable";
     }
     const day = blocks.length > 0 ? aggregateDay(blocks) : new Map<number, DayAgg>();
 

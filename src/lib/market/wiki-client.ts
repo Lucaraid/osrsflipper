@@ -85,7 +85,7 @@ export class WikiClient {
         if (!lastError.retryable || options.signal?.aborted) throw lastError;
       }
     }
-    throw lastError ?? new WikiApiError("Unbekannter Fehler", null, false);
+    throw lastError ?? new WikiApiError("Unknown error", null, false);
   }
 
   private async once(url: string, timeoutMs: number, outer?: AbortSignal): Promise<unknown> {
@@ -103,11 +103,11 @@ export class WikiClient {
         });
       } catch (err) {
         const timedOut = ctrl.signal.aborted && !outer?.aborted;
-        throw new WikiApiError(timedOut ? `Zeitüberschreitung nach ${timeoutMs} ms` : `Netzwerkfehler: ${(err as Error)?.message ?? err}`, null, !outer?.aborted);
+        throw new WikiApiError(timedOut ? `Timed out after ${timeoutMs} ms` : `Network error: ${(err as Error)?.message ?? err}`, null, !outer?.aborted);
       }
       if (!res.ok) {
         const retryable = res.status === 429 || res.status >= 500;
-        const e = new WikiApiError(`OSRS Wiki API antwortete mit HTTP ${res.status}`, res.status, retryable) as WikiApiError & { retryAfterMs?: number };
+        const e = new WikiApiError(`OSRS Wiki API responded with HTTP ${res.status}`, res.status, retryable) as WikiApiError & { retryAfterMs?: number };
         const ra = Number(res.headers.get("retry-after"));
         if (res.status === 429 && Number.isFinite(ra) && ra > 0) e.retryAfterMs = ra * 1000;
         throw e;
@@ -115,7 +115,7 @@ export class WikiClient {
       try {
         return await res.json();
       } catch {
-        throw new WikiApiError("Ungültige JSON-Antwort der OSRS Wiki API", res.status, true);
+        throw new WikiApiError("Invalid JSON response from the OSRS Wiki API", res.status, true);
       }
     } finally {
       clearTimeout(timer);

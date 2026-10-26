@@ -19,7 +19,7 @@ export function Toaster() {
           )}
         >
           <span className="flex-1">{t.text}</span>
-          <button type="button" onClick={() => dismiss(t.id)} className="text-muted hover:text-text" aria-label="Schliessen">
+          <button type="button" onClick={() => dismiss(t.id)} className="text-muted hover:text-text" aria-label="Close">
             <X className="size-3.5" />
           </button>
         </div>

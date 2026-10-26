@@ -5,7 +5,7 @@ Diese Datei fasst alles Wichtige zusammen, damit eine neue Sitzung ohne den alte
 
 ## Nutzer & Sprache
 
-- Besitzer: Pascal (Schweiz). **Antworten und UI-Texte auf Deutsch (Schweizer Schreibweise: „ss“ statt „ß“).** Zahlenformat de-CH (1'234'567).
+- Besitzer: Pascal (Schweiz). **Antworten an Pascal auf Deutsch (Schweizer Schreibweise: „ss“ statt „ß“). Die App-Oberfläche ist auf Englisch** (seit 2026-10-26). Zahlenformat bleibt de-CH (1'234'567), Datumsformat en-GB.
 - Pascal spielt OSRS und nutzt das Tool selbst zum Flippen. Er will praktische, schnelle Bedienung (möglichst wenig Tippen).
 - Läuft auf Windows: in PowerShell `npm.cmd` statt `npm` verwenden (Execution Policy blockiert `npm.ps1`).
 
@@ -13,7 +13,7 @@ Diese Datei fasst alles Wichtige zusammen, damit eine neue Sitzung ohne den alte
 
 OSRS Grand Exchange Flipper – Next.js-Webapp, die Flip-Gelegenheiten aus der **OSRS Wiki Real-time Prices API v2** (`https://prices.runescape.wiki/api/v2/osrs`) berechnet und eigene Trades trackt. Ausführliche Doku: `README.md`, `docs/01–05`.
 
-Seiten: Dashboard · **Top 10 Käufe** (Tabs Standard + High Value ≥ 2M Gewinn/Trade) · Flip Scanner · Item Explorer + Item-Detail · Marktanalyse · Profit-Rechner · Portfolio · Flip-Historie (Tracker) · Watchlist · Preisalarme · Einstellungen · Methodik · Datenschutz.
+Seiten (UI englisch): Dashboard · **Top 10 Buys** (Tabs Standard + High Value ≥ 2M Gewinn/Trade) · Flip Scanner · Item-Detail (über Suche Ctrl+K) · Profit Calculator · My Portfolio · Flip History (Tracker) · Watchlist · Settings · Methodology (`/methodology`) · Privacy (`/privacy`).
 
 ## Befehle
 
@@ -38,7 +38,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict (`noUnchecke
 - `src/app/api/{items,market,timeseries,health}` – eigene API-Routen; Client holt nur von dort.
 - `src/lib/tax/` – **einzige** Stelle für GE-Steuer: 2 % pro Stück, abgerundet, max. 5M/Stück, 48 befreite Item-IDs (Stand 2026-10-24).
 - `src/lib/calc/profit.ts` – zentrale Flip-Berechnung (`calculateFlip`, Break-even, max. Kaufpreis, max. Menge).
-- `src/lib/analysis/` – Datenqualität, Risiko, Scanner + Ranking (inkl. **konservativer Marge** mit 1h-Ø-Preisen), Top-10 (`top.ts`), Indikatoren, Marktanalyse/Anomalien, Strategien.
+- `src/lib/analysis/` – Datenqualität, Risiko, Scanner + Ranking (inkl. **konservativer Marge** mit 1h-Ø-Preisen), Top-10 (`top.ts`), Indikatoren.
 - `src/lib/portfolio/` – Zod-Schemas, FIFO (`fifo.ts`), Portfolio ohne Doppelzählung, Zeitreihe.
 - `src/lib/storage/` – IndexedDB (v2, Store `meta` für Ordner-Handle), Settings (LocalStorage, Zod), Backup-Format, **Ordner-Speicherung** (`folder.ts`, File System Access API: `osrs-ge-flipper-daten.json` + `trades.csv`).
 - `src/state/` – Zustand-Stores: `data` (Trades etc.), `settings`, `folder`, `calc` (letzte Rechner-Werte je Item), `toasts`.
@@ -62,10 +62,12 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict (`noUnchecke
 4. **High Value Top 10**: ≥ 2M gp Gewinn pro Trade (Kapital pro Trade = Gesamtkapital, Volumen ≥ 20 / ≥ 3×).
 5. Git-Repository (lokal angelegt; Push zu GitHub macht Pascal selbst).
 6. **„Trade erfassen“ übernimmt Kaufpreis + Stückzahl aus dem Profit-Rechner**; existiert bereits ein offener Kauf für das Item, wird direkt ein **Verkauf** mit Verkaufspreis aus dem Rechner und der offenen Menge vorbereitet. Flip-Historie hat einen „Verkaufen“-Button.
+7. **Design fröhlicher, Standard = helles Design in Pergament-Braun wie das OSRS Wiki** (dunkel = warmes Holz-Braun, Umschalter oben rechts). Farben nur über Tokens in `globals.css`. App vereinfacht: Marktanalyse, Preisalarme und Item-Explorer-Liste entfernt (Alarm-Daten bleiben im Speicher-/Backup-Format für Kompatibilität), Einstellungen ohne Datenaktualität/Positionsregeln, Dashboard mit 6 Kennzahlen.
+8. **Ganze App auf Englisch.** Interne Werte bleiben deutsch, damit gespeicherte Daten gültig bleiben (Trade-Status `offen/teilweise/geschlossen`, Risiko/Qualität `niedrig/mittel/hoch/unzureichend`, Dateiname `osrs-ge-flipper-daten.json`) – Anzeige über Label-Maps (`LEVEL_LABEL`, `STATUS_LABEL`). Code-Kommentare bleiben deutsch.
+9. **Kaufchargen ohne Gebühren-Feld** (gibt es im GE nicht); beim Verkauf bleibt das optionale Feld für die tatsächliche Steuer.
 
 ## Bekannte Grenzen / Ideen
 
-- Alarme nur bei offenem Tab (keine Server-Push-Alarme).
 - Items ohne bekanntes GE-Limit: Menge nur durch Kapital/Volumen begrenzt.
 - 4-h-Kauflimit wird nicht aus eigenen Käufen nachverfolgt (mögliche Erweiterung).
 - Siehe `docs/05-limitations.md`.

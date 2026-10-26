@@ -6,12 +6,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "OSRS GE Flipper", template: "%s · OSRS GE Flipper" },
-  description: "Datenbasierter Trading-Assistent für den Old School RuneScape Grand Exchange – Flip-Scanner, Profit-Rechner, Trade-Tracker. Daten: OSRS Wiki Real-time Prices API.",
+  description: "Data-driven trading assistant for the Old School RuneScape Grand Exchange – flip scanner, profit calculator, trade tracker. Data: OSRS Wiki Real-time Prices API.",
   robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0e1013",
+  themeColor: "#c8b28c",
   width: "device-width",
   initialScale: 1,
 };
@@ -21,7 +21,7 @@ const themeScript = `try{var t=localStorage.getItem("osrs-ge-flipper:theme");if(
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="de-CH" data-theme="dark" suppressHydrationWarning>
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

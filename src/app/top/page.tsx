@@ -32,12 +32,12 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
     setBusy(true);
     const now = Date.now();
     const res = await saveTrade(
-      { id: newId(), itemId: c.id, itemName: c.name, createdAt: now, updatedAt: now, lots: [], sales: [], offers: [{ id: newId(), date: now, quantity: p.qty, price: c.estBuy }], notes: "Aus Top 10 Käufe", history: [] },
-      "erstellt",
-      `Kaufangebot ${p.qty} × ${c.estBuy} gp aus Top 10`,
+      { id: newId(), itemId: c.id, itemName: c.name, createdAt: now, updatedAt: now, lots: [], sales: [], offers: [{ id: newId(), date: now, quantity: p.qty, price: c.estBuy }], notes: "From Top 10 Buys", history: [] },
+      "created",
+      `Buy offer ${p.qty} × ${c.estBuy} gp from Top 10`,
     );
     setBusy(false);
-    if (res.ok) toast(`Kaufangebot für ${c.name} erfasst (${p.qty} × ${gp(c.estBuy)} gp). Wenn es gefüllt ist, in der Flip-Historie „Gefüllt → Kauf“ klicken.`, "pos");
+    if (res.ok) toast(`Buy offer for ${c.name} logged (${p.qty} × ${gp(c.estBuy)} gp). Once it fills, click “Filled → buy” in the Flip History.`, "pos");
     else toast(res.errors.join(" "), "neg");
   };
 
@@ -51,8 +51,8 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
           <div className="flex flex-wrap items-center gap-1 text-[11px] text-faint">
             <span>#{c.id}</span>
             <span>· Limit {c.limit != null ? gp(c.limit) : "–"}/4 h</span>
-            <span>· Preise <Age seconds={c.ageSec} /></span>
-            {c.taxExempt && <Badge tone="pos">steuerfrei</Badge>}
+            <span>· prices <Age seconds={c.ageSec} /></span>
+            {c.taxExempt && <Badge tone="pos">tax-free</Badge>}
           </div>
         </div>
         <WatchButton itemId={c.id} name={c.name} />
@@ -60,40 +60,40 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
 
       <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-4">
         <div>
-          <div className="text-[11px] text-faint">Kaufgebot<Est /></div>
+          <div className="text-[11px] text-faint">Buy offer<Est /></div>
           <div className="font-semibold num" data-testid="top-buy">{gp(c.estBuy)}</div>
         </div>
         <div>
-          <div className="text-[11px] text-faint">Verkaufen zu<Est /></div>
+          <div className="text-[11px] text-faint">Sell at<Est /></div>
           <div className="font-semibold num">{gp(c.estSell)}</div>
         </div>
         <div>
-          <div className="text-[11px] text-faint">Menge</div>
+          <div className="text-[11px] text-faint">Quantity</div>
           <div className="num">
             {p.qty.toLocaleString("de-CH")}
             {p.qtyReducedByVolume && (
-              <Tip content={`Menge wegen des 24h-Volumens reduziert (sonst ${c.qty.toLocaleString("de-CH")}).`}>
+              <Tip content={`Quantity reduced because of 24h volume (otherwise ${c.qty.toLocaleString("de-CH")}).`}>
                 <span className="ml-1 cursor-help text-warn">↓</span>
               </Tip>
             )}
           </div>
         </div>
         <div>
-          <div className="text-[11px] text-faint">Kapital</div>
+          <div className="text-[11px] text-faint">Capital</div>
           <div className="num">{gpShort(p.capital)}</div>
         </div>
         <div>
-          <div className="text-[11px] text-faint">Gewinn<Est /></div>
+          <div className="text-[11px] text-faint">Profit<Est /></div>
           <div className="font-semibold"><Gp value={p.profit} short colored /></div>
         </div>
         <div>
-          <div className="text-[11px] text-faint">Marge/Stk · ROI</div>
+          <div className="text-[11px] text-faint">Margin each · ROI</div>
           <div><Gp value={p.margin} colored /> · <Pct value={p.roi} /></div>
         </div>
         <div className="col-span-2">
-          <div className="text-[11px] text-faint">Handelsvolumen 24 h</div>
+          <div className="text-[11px] text-faint">Trade volume 24 h</div>
           <div className="num" data-testid="top-volume">
-            {gpShort(c.vol24h)} gesamt · {gpShort(c.vol24hWeaker)} schwächere Seite <span className="text-faint">· {p.coverage.toFixed(0)}× Menge</span>
+            {gpShort(c.vol24h)} total · {gpShort(c.vol24hWeaker)} weaker side <span className="text-faint">· {p.coverage.toFixed(0)}× qty</span>
           </div>
         </div>
       </div>
@@ -110,11 +110,11 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
 
       <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" variant="primary" onClick={createOffer} disabled={busy} data-testid="top-create-offer">
-          <ShoppingCart /> Kaufangebot erfassen
+          <ShoppingCart /> Log buy offer
         </Button>
         <Button size="sm" variant="outline" asChild>
           <Link href={`/calculator?id=${c.id}&buy=${c.estBuy}&sell=${c.estSell}&qty=${p.qty}`}>
-            <Calculator /> Rechner
+            <Calculator /> Calculator
           </Link>
         </Button>
       </div>
@@ -167,66 +167,66 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
   return (
     <>
       <Card className="mb-3 grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-7">
-        <Field label="Gesamtkapital (gp)" hint={capitalOverride == null ? capitalHint : undefined}>
-          <AmountInput value={capitalOverride} onChange={onCapital} placeholder={gp(baseCapital)} aria-label="Gesamtkapital" data-testid={hv ? "hv-capital" : "top-capital"} />
+        <Field label="Total capital (gp)" hint={capitalOverride == null ? capitalHint : undefined}>
+          <AmountInput value={capitalOverride} onChange={onCapital} placeholder={gp(baseCapital)} aria-label="Total capital" data-testid={hv ? "hv-capital" : "top-capital"} />
         </Field>
-        <Field label={hv ? "Kapital pro Trade (gp)" : "Kapital pro Flip (gp)"} hint={cfg.capitalPerFlip == null ? (hv ? "= gesamtes Kapital" : `= Kapital ÷ ${settings.geSlots} GE-Slots`) : undefined}>
-          <AmountInput value={cfg.capitalPerFlip} onChange={(v) => setCfg({ capitalPerFlip: v && v > 0 ? v : null })} placeholder={gp(perFlip)} aria-label="Kapital pro Trade" />
+        <Field label={hv ? "Capital per trade (gp)" : "Capital per flip (gp)"} hint={cfg.capitalPerFlip == null ? (hv ? "= all capital" : `= capital ÷ ${settings.geSlots} GE slots`) : undefined}>
+          <AmountInput value={cfg.capitalPerFlip} onChange={(v) => setCfg({ capitalPerFlip: v && v > 0 ? v : null })} placeholder={gp(perFlip)} aria-label="Capital per trade" />
         </Field>
         {hv && (
-          <Field label="Min. Gewinn pro Trade (gp)" hint="konservativ, nach 2 % Steuer">
-            <AmountInput value={cfg.minProfit ?? 0} onChange={(v) => v != null && v >= 0 && setCfg({ minProfit: v })} aria-label="Mindestgewinn pro Trade" data-testid="hv-min-profit" />
+          <Field label="Min profit per trade (gp)" hint="conservative, after 2% tax">
+            <AmountInput value={cfg.minProfit ?? 0} onChange={(v) => v != null && v >= 0 && setCfg({ minProfit: v })} aria-label="Minimum profit per trade" data-testid="hv-min-profit" />
           </Field>
         )}
-        <Field label="Min. Volumen 24 h (Stück)" hint="auf der schwächeren Seite (Kauf bzw. Verkauf)">
-          <AmountInput value={cfg.minVolume24h} onChange={(v) => v != null && v >= 0 && setCfg({ minVolume24h: Math.floor(v) })} aria-label="Mindestvolumen 24h" data-testid={hv ? "hv-min-volume" : "top-min-volume"} />
+        <Field label="Min volume 24 h (items)" hint="on the weaker side (buy or sell)">
+          <AmountInput value={cfg.minVolume24h} onChange={(v) => v != null && v >= 0 && setCfg({ minVolume24h: Math.floor(v) })} aria-label="Minimum volume 24h" data-testid={hv ? "hv-min-volume" : "top-min-volume"} />
         </Field>
-        <Field label="Volumen ≥ x-fache Menge" hint={`24h-Volumen mind. ${cfg.minCoverage}× so gross wie deine Menge`}>
-          <AmountInput value={cfg.minCoverage} onChange={(v) => v != null && v >= 0 && setCfg({ minCoverage: Math.min(1000, v) })} aria-label="Mindest-Abdeckung" />
+        <Field label="Volume ≥ x times qty" hint={`24h volume at least ${cfg.minCoverage}× your quantity`}>
+          <AmountInput value={cfg.minCoverage} onChange={(v) => v != null && v >= 0 && setCfg({ minCoverage: Math.min(1000, v) })} aria-label="Minimum coverage" />
         </Field>
-        <Field label="Sortierung">
-          <Select value={cfg.sort} onChange={(e) => setCfg({ sort: e.target.value as TopConfig["sort"] })} aria-label="Sortierung" data-testid={hv ? "hv-sort" : "top-sort"}>
-            <option value="score">Ausgewogen</option>
-            <option value="profit">Höchster Gewinn pro Trade</option>
-            <option value="roi">Höchster ROI</option>
+        <Field label="Sort by">
+          <Select value={cfg.sort} onChange={(e) => setCfg({ sort: e.target.value as TopConfig["sort"] })} aria-label="Sort by" data-testid={hv ? "hv-sort" : "top-sort"}>
+            <option value="score">Balanced</option>
+            <option value="profit">Highest profit per trade</option>
+            <option value="roi">Highest ROI</option>
           </Select>
         </Field>
         <label className="flex items-end gap-1.5 pb-2 text-xs text-muted">
-          <input type="checkbox" checked={cfg.hideHeld} onChange={(e) => setCfg({ hideHeld: e.target.checked })} /> Items mit offenen Positionen/Angeboten ausblenden
+          <input type="checkbox" checked={cfg.hideHeld} onChange={(e) => setCfg({ hideHeld: e.target.checked })} /> Hide items you already hold or have offers on
         </label>
       </Card>
 
       {hv && (
         <div className="mb-3">
           <InfoNote>
-            High-Value-Items haben oft niedrige Kauflimits und wenig Handel: Gebote werden langsamer gefüllt, Preise schwanken stärker, und ein Fehlgriff kostet mehr. Gewinn pro Trade = Menge (Kapital, GE-Limit, Volumen) × konservative Marge.
+            High-value items often have low buy limits and little trading: offers fill slower, prices swing more, and a mistake costs more. Profit per trade = quantity (capital, GE limit, volume) × conservative margin.
           </InfoNote>
         </div>
       )}
 
       {market.data && market.data.meta.day.blocksLoaded < 24 && (
-        <div className="mb-3"><InfoNote tone="warn">24h-Volumen wird noch geladen ({market.data.meta.day.blocksLoaded}/24 Stunden) – die Liste kann sich gleich noch ändern.</InfoNote></div>
+        <div className="mb-3"><InfoNote tone="warn">24h volume is still loading ({market.data.meta.day.blocksLoaded}/24 hours) – the list may still change.</InfoNote></div>
       )}
 
       {error && !candidates.length ? (
-        <ErrorNote>Marktdaten nicht verfügbar: {error.message}. Ohne aktuelle Daten werden keine Empfehlungen angezeigt.</ErrorNote>
+        <ErrorNote>Market data unavailable: {error.message}. No suggestions are shown without current data.</ErrorNote>
       ) : isLoading ? (
         <div className="grid gap-3 md:grid-cols-2">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-48" />)}</div>
       ) : result.picks.length === 0 ? (
         <Card>
-          <EmptyState title="Kein Item erfüllt aktuell alle Kriterien">
+          <EmptyState title="No item meets all criteria right now">
             {hv
-              ? `Mit ${gp(perFlip)} gp pro Trade erreicht aktuell kein Item ${gp(cfg.minProfit ?? 0)} gp Gewinn. Erhöhe das Kapital pro Trade, senke den Mindestgewinn oder lockere die Volumen-Kriterien.`
-              : "Senke das Mindestvolumen oder das x-fache der Menge, oder erhöhe das Kapital pro Flip."}
+              ? `With ${gp(perFlip)} gp per trade no item currently reaches ${gp(cfg.minProfit ?? 0)} gp profit. Raise the capital per trade, lower the minimum profit or loosen the volume criteria.`
+              : "Lower the minimum volume or the volume multiple, or raise the capital per flip."}
           </EmptyState>
         </Card>
       ) : (
         <>
           <div className="mb-2 flex flex-wrap justify-between gap-2 text-xs text-muted" data-testid={hv ? "hv-summary" : "top-summary"}>
             <span>
-              {result.picks.length} Empfehlungen · Kapital pro {hv ? "Trade" : "Flip"} {gpShort(perFlip)} · zusammen <b className="text-text">{gpShort(totalCapital)}</b> Kapital, gesch. Gewinn <b className="text-pos">{gpShort(total)}</b> (wenn alle Gebote gefüllt und zum Schätzpreis verkauft werden)
+              {result.picks.length} suggestions · capital per {hv ? "trade" : "flip"} {gpShort(perFlip)} · total <b className="text-text">{gpShort(totalCapital)}</b> capital, est. profit <b className="text-pos">{gpShort(total)}</b> (if all offers fill and sell at the estimated price)
             </span>
-            <span>Kaufgebot = letzter Instant-Sell + {settings.priceOffset} gp · Verkauf = letzter Instant-Buy − {settings.priceOffset} gp · nach 2 % GE-Steuer</span>
+            <span>Buy offer = last instant-sell + {settings.priceOffset} gp · sell = last instant-buy − {settings.priceOffset} gp · after 2% GE tax</span>
           </div>
           <ol className="grid gap-3 md:grid-cols-2" data-testid={hv ? "hv-list" : "top-list"}>
             {result.picks.map((p, i) => <PickCard key={p.c.id} p={p} rank={i + 1} />)}
@@ -237,8 +237,8 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
       {nearMiss.length > 0 && (
         <Card className="mt-3" data-testid="hv-near-miss">
           <div className="border-b border-border px-4 py-2.5">
-            <h2 className="text-sm font-semibold">Knapp unter {gpShort(cfg.minProfit ?? 0)} Gewinn pro Trade</h2>
-            <p className="text-xs text-muted">Erfüllen alle anderen Kriterien, erreichen mit {gpShort(perFlip)} Kapital pro Trade aber nicht den Mindestgewinn – nur zur Orientierung.</p>
+            <h2 className="text-sm font-semibold">Just below {gpShort(cfg.minProfit ?? 0)} profit per trade</h2>
+            <p className="text-xs text-muted">Meet all other criteria but don’t reach the minimum profit with {gpShort(perFlip)} capital per trade – for reference only.</p>
           </div>
           <ul className="divide-y divide-border text-sm">
             {nearMiss.map((p) => (
@@ -246,7 +246,7 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
                 <ItemIcon icon={p.c.icon} name={p.c.name} size={18} />
                 <Link href={`/items/${p.c.id}`} className="min-w-40 flex-1 truncate hover:text-accent">{p.c.name}</Link>
                 <span className="text-xs text-muted num">{p.qty.toLocaleString("de-CH")} × {gp(p.margin)} gp</span>
-                <span className="text-xs text-muted">Kapital {gpShort(p.capital)}</span>
+                <span className="text-xs text-muted">Capital {gpShort(p.capital)}</span>
                 <Gp value={p.profit} short colored className="w-16 text-right" />
               </li>
             ))}
@@ -255,11 +255,11 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
       )}
 
       <p className="mt-3 text-[11px] text-faint">
-        Kriterien: positive Marge auch mit Ø-Preisen der letzten Stunde, Datenqualität ≥ {TOP_MIN_QUALITY}, keine veralteten Preise, 24h-Volumen der schwächeren Seite ≥ {gp(cfg.minVolume24h)} Stück und ≥ {cfg.minCoverage}× Menge (sonst wird die Menge reduziert)
-        {hv ? `, Gewinn pro Trade ≥ ${gp(cfg.minProfit ?? 0)} gp` : ""}. Gewinn = Menge × kleinere der beiden Margen.
-        {" "}Aussortiert: {result.excluded.noMargin} ohne positive Marge, {result.excluded.lowVolume} zu wenig Volumen, {result.excluded.quality} Datenqualität, {result.excluded.stale} veraltet
-        {hv ? `, ${result.excluded.lowProfit} unter Mindestgewinn` : ""}
-        {cfg.hideHeld ? `, ${result.excluded.excluded} bereits gehalten` : ""}.
+        Criteria: positive margin also with last hour’s average prices, data quality ≥ {TOP_MIN_QUALITY}, no stale prices, 24h volume on the weaker side ≥ {gp(cfg.minVolume24h)} items and ≥ {cfg.minCoverage}× quantity (otherwise the quantity is reduced)
+        {hv ? `, profit per trade ≥ ${gp(cfg.minProfit ?? 0)} gp` : ""}. Profit = quantity × the smaller of both margins.
+        {" "}Filtered out: {result.excluded.noMargin} no positive margin, {result.excluded.lowVolume} too little volume, {result.excluded.quality} data quality, {result.excluded.stale} stale
+        {hv ? `, ${result.excluded.lowProfit} below minimum profit` : ""}
+        {cfg.hideHeld ? `, ${result.excluded.excluded} already held` : ""}.
       </p>
     </>
   );
@@ -272,18 +272,18 @@ export default function TopPage() {
   const [capitalOverride, setCapitalOverride] = useState<number | null>(null);
   const [tab, setTab] = useState<"standard" | "highValue">("standard");
   const baseCapital = capitalOverride ?? (hasData && summary.available > 0 ? summary.available : settings.defaultCapital);
-  const capitalHint = hasData ? "aus Portfolio (verfügbar)" : "aus Einstellungen";
+  const capitalHint = hasData ? "from portfolio (available)" : "from settings";
 
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Top 10 Käufe"
-        description="Die aktuell besten Flip-Kandidaten mit ausreichend Handelsvolumen in den letzten 24 Stunden. Schätzungen auf Basis zuletzt beobachteter Preise – keine Garantie, dass Gebote gefüllt werden."
+        title="Top 10 Buys"
+        description="The best flip candidates right now with enough trade volume in the last 24 hours. Estimates from the last observed prices – no guarantee that offers will fill."
       />
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList className="mb-3" aria-label="Liste">
+        <TabsList className="mb-3" aria-label="List">
           <TabsTrigger value="standard" data-testid="tab-standard">Standard</TabsTrigger>
-          <TabsTrigger value="highValue" data-testid="tab-high-value">High Value (≥ {gpShort(settings.highValue.minProfit)} Gewinn/Trade)</TabsTrigger>
+          <TabsTrigger value="highValue" data-testid="tab-high-value">High Value (≥ {gpShort(settings.highValue.minProfit)} profit/trade)</TabsTrigger>
         </TabsList>
         <TabsContent value="standard">
           <TopView

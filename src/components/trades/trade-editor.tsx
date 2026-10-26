@@ -105,15 +105,15 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
 
   const save = async () => {
     const errs: string[] = [];
-    if (!d.itemId) errs.push("Bitte ein Item wählen.");
-    if (asTrade.lots.length === 0 && asTrade.offers.length === 0) errs.push("Mindestens eine Kaufcharge oder ein Kaufangebot erfassen.");
+    if (!d.itemId) errs.push("Please pick an item.");
+    if (asTrade.lots.length === 0 && asTrade.offers.length === 0) errs.push("Add at least one buy or one open buy offer.");
     const incomplete = [...d.lots, ...d.sales, ...d.offers].some((r) => !isComplete(r) && (r.quantity != null || r.price != null));
-    if (incomplete) errs.push("Unvollständige Zeilen: Menge und Preis müssen > 0 sein.");
+    if (incomplete) errs.push("Incomplete rows: quantity and price must be > 0.");
     if (errs.length) return setErrors(errs);
-    const detail = `${asTrade.lots.length} Kauf, ${asTrade.sales.length} Verkauf, ${asTrade.offers.length} Angebot(e)`;
-    const res = await saveTrade(asTrade, isNew ? "erstellt" : "bearbeitet", detail);
+    const detail = `${asTrade.lots.length} buy, ${asTrade.sales.length} sell, ${asTrade.offers.length} offer(s)`;
+    const res = await saveTrade(asTrade, isNew ? "created" : "edited", detail);
     if (!res.ok) return setErrors(res.errors);
-    toast(isNew ? "Trade gespeichert." : "Trade aktualisiert.", "pos");
+    toast(isNew ? "Trade saved." : "Trade updated.", "pos");
     onOpenChange(false);
   };
 
@@ -121,7 +121,7 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={mode === "sell" ? `Verkauf erfassen – ${d.itemName}` : isNew ? "Trade erfassen" : `Trade bearbeiten – ${d.itemName}`} description="Nur tatsächlich ausgeführte Käufe/Verkäufe als Chargen erfassen. Offene Kaufangebote reservieren Kapital." className="max-w-3xl">
+      <DialogContent title={mode === "sell" ? `Log sale – ${d.itemName}` : isNew ? "Log trade" : `Edit trade – ${d.itemName}`} description="Only log buys and sells that actually went through. Open buy offers reserve capital." className="max-w-3xl">
         <div className="space-y-4" data-testid="trade-editor">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Item">
@@ -131,7 +131,7 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
                 testId="trade-item"
               />
             </Field>
-            <Field label="Notizen">
+            <Field label="Notes">
               <Input value={d.notes} onChange={(e) => setD((x) => ({ ...x, notes: e.target.value }))} placeholder="optional" />
             </Field>
           </div>
@@ -139,75 +139,74 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
           {/* Kaufchargen */}
           <section>
             <div className="mb-1.5 flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Kaufchargen</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Buys</h3>
               <Button size="sm" variant="outline" onClick={() => setD((x) => ({ ...x, lots: [...x.lots, { id: newId(), date: Date.now(), quantity: null, price: null, fees: 0 }] }))} data-testid="add-lot">
-                <Plus /> Kauf
+                <Plus /> Buy
               </Button>
             </div>
             <div className="space-y-2">
               {d.lots.map((l, i) => (
-                <div key={l.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_1fr_auto]" data-testid="lot-row">
-                  <Input type="datetime-local" value={toLocalInput(l.date)} onChange={(e) => upd("lots", i, { date: fromLocalInput(e.target.value) })} aria-label="Kaufdatum" />
-                  <AmountInput value={l.quantity} onChange={(v) => upd("lots", i, { quantity: v })} placeholder="Menge" aria-label="Gekaufte Menge" data-testid="lot-qty" />
-                  <AmountInput value={l.price} onChange={(v) => upd("lots", i, { price: v })} placeholder="Preis/Stk" aria-label="Kaufpreis pro Stück" data-testid="lot-price" />
-                  <AmountInput value={l.fees} onChange={(v) => upd("lots", i, { fees: v ?? 0 })} placeholder="Gebühren" aria-label="Gebühren" />
-                  <Button size="icon" variant="ghost" onClick={() => del("lots", i)} aria-label="Kaufcharge löschen">
+                <div key={l.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_auto]" data-testid="lot-row">
+                  <Input type="datetime-local" value={toLocalInput(l.date)} onChange={(e) => upd("lots", i, { date: fromLocalInput(e.target.value) })} aria-label="Buy date" />
+                  <AmountInput value={l.quantity} onChange={(v) => upd("lots", i, { quantity: v })} placeholder="Quantity" aria-label="Quantity bought" data-testid="lot-qty" />
+                  <AmountInput value={l.price} onChange={(v) => upd("lots", i, { price: v })} placeholder="Price each" aria-label="Buy price each" data-testid="lot-price" />
+                  <Button size="icon" variant="ghost" onClick={() => del("lots", i)} aria-label="Delete buy">
                     <Trash2 />
                   </Button>
                 </div>
               ))}
-              {d.lots.length === 0 && <p className="text-xs text-faint">Keine Kaufchargen.</p>}
+              {d.lots.length === 0 && <p className="text-xs text-faint">No buys yet.</p>}
             </div>
           </section>
 
           {/* Verkäufe */}
           <section>
             <div className="mb-1.5 flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Verkäufe (auch Teilverkäufe)</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Sales (partial sales allowed)</h3>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setD((x) => ({ ...x, sales: [...x.sales, { id: newId(), date: Date.now(), quantity: summary && summary.openQty > 0 ? summary.openQty : null, price: null, tax: null, fees: 0 }] }))}
                 data-testid="add-sale"
               >
-                <Plus /> Verkauf
+                <Plus /> Sale
               </Button>
             </div>
             <div className="space-y-2">
               {d.sales.map((s, i) => (
                 <div key={s.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_1fr_auto]" data-testid="sale-row">
-                  <Input type="datetime-local" value={toLocalInput(s.date)} onChange={(e) => upd("sales", i, { date: fromLocalInput(e.target.value) })} aria-label="Verkaufsdatum" />
-                  <AmountInput value={s.quantity} onChange={(v) => upd("sales", i, { quantity: v })} placeholder="Menge" aria-label="Verkaufte Menge" data-testid="sale-qty" />
-                  <AmountInput value={s.price} onChange={(v) => upd("sales", i, { price: v })} placeholder="Preis/Stk" aria-label="Verkaufspreis pro Stück" data-testid="sale-price" />
+                  <Input type="datetime-local" value={toLocalInput(s.date)} onChange={(e) => upd("sales", i, { date: fromLocalInput(e.target.value) })} aria-label="Sale date" />
+                  <AmountInput value={s.quantity} onChange={(v) => upd("sales", i, { quantity: v })} placeholder="Quantity" aria-label="Quantity sold" data-testid="sale-qty" />
+                  <AmountInput value={s.price} onChange={(v) => upd("sales", i, { price: v })} placeholder="Price each" aria-label="Sell price each" data-testid="sale-price" />
                   <AmountInput
                     value={s.tax}
                     onChange={(v) => upd("sales", i, { tax: v })}
-                    placeholder={s.price && s.quantity ? `Steuer ${gp(taxTotal(s.price, s.quantity, d.itemId))}` : "Steuer (auto)"}
-                    aria-label="Tatsächliche Steuer (optional)"
+                    placeholder={s.price && s.quantity ? `Tax ${gp(taxTotal(s.price, s.quantity, d.itemId))}` : "Tax (auto)"}
+                    aria-label="Actual tax paid (optional)"
                   />
-                  <Button size="icon" variant="ghost" onClick={() => del("sales", i)} aria-label="Verkauf löschen">
+                  <Button size="icon" variant="ghost" onClick={() => del("sales", i)} aria-label="Delete sale">
                     <Trash2 />
                   </Button>
                 </div>
               ))}
-              {d.sales.length === 0 && <p className="text-xs text-faint">Noch keine Verkäufe – Trade ist offen.</p>}
+              {d.sales.length === 0 && <p className="text-xs text-faint">No sales yet – trade is open.</p>}
             </div>
           </section>
 
           {/* Offene Kaufangebote */}
           <section>
             <div className="mb-1.5 flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Offene Kaufangebote (reservieren Kapital)</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Open buy offers (reserve capital)</h3>
               <Button size="sm" variant="outline" onClick={() => setD((x) => ({ ...x, offers: [...x.offers, { id: newId(), date: Date.now(), quantity: null, price: null }] }))}>
-                <Plus /> Angebot
+                <Plus /> Offer
               </Button>
             </div>
             <div className="space-y-2">
               {d.offers.map((o, i) => (
                 <div key={o.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_auto_auto]">
-                  <Input type="datetime-local" value={toLocalInput(o.date)} onChange={(e) => upd("offers", i, { date: fromLocalInput(e.target.value) })} aria-label="Angebotsdatum" />
-                  <AmountInput value={o.quantity} onChange={(v) => upd("offers", i, { quantity: v })} placeholder="Menge" aria-label="Angebotsmenge" />
-                  <AmountInput value={o.price} onChange={(v) => upd("offers", i, { price: v })} placeholder="Gebot/Stk" aria-label="Gebot pro Stück" />
+                  <Input type="datetime-local" value={toLocalInput(o.date)} onChange={(e) => upd("offers", i, { date: fromLocalInput(e.target.value) })} aria-label="Offer date" />
+                  <AmountInput value={o.quantity} onChange={(v) => upd("offers", i, { quantity: v })} placeholder="Quantity" aria-label="Offer quantity" />
+                  <AmountInput value={o.price} onChange={(v) => upd("offers", i, { price: v })} placeholder="Bid each" aria-label="Bid each" />
                   <Button
                     size="sm"
                     variant="outline"
@@ -220,9 +219,9 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
                       }))
                     }
                   >
-                    Gefüllt → Kauf
+                    Filled → buy
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => del("offers", i)} aria-label="Angebot löschen">
+                  <Button size="icon" variant="ghost" onClick={() => del("offers", i)} aria-label="Delete offer">
                     <Trash2 />
                   </Button>
                 </div>
@@ -233,36 +232,36 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
           {summary && (
             <div className="grid grid-cols-2 gap-2 rounded-md border border-border bg-surface-2 p-3 text-xs sm:grid-cols-4" data-testid="trade-preview">
               <div>
-                <div className="text-faint">Gekauft / verkauft / offen</div>
+                <div className="text-faint">Bought / sold / open</div>
                 <div className="num">{summary.boughtQty} / {summary.soldQty} / {summary.openQty}</div>
               </div>
               <div>
-                <div className="text-faint">Ø Einkaufspreis</div>
+                <div className="text-faint">Avg buy price</div>
                 <Gp value={summary.avgBuyPrice} />
               </div>
               <div>
-                <div className="text-faint">Realisiert (FIFO, netto)</div>
+                <div className="text-faint">Realised (FIFO, net)</div>
                 <Gp value={summary.realized} colored />
               </div>
               <div>
-                <div className="text-faint">ROI realisiert</div>
+                <div className="text-faint">Realised ROI</div>
                 <Pct value={summary.roi} />
               </div>
               {meta?.limit != null && summary.boughtQty > meta.limit && (
-                <div className="col-span-full text-warn">Hinweis: Gesamtmenge übersteigt das 4-h-Kauflimit ({meta.limit}) – bei Käufen über mehrere Zeitfenster unkritisch.</div>
+                <div className="col-span-full text-warn">Note: total quantity exceeds the 4-hour buy limit ({meta.limit}) – fine if bought across several windows.</div>
               )}
             </div>
           )}
           {summary && summary.errors.length > 0 && <ErrorNote>{summary.errors.join(" ")}</ErrorNote>}
           {errors.length > 0 && <ErrorNote>{errors.join(" ")}</ErrorNote>}
-          <InfoNote>Gewinne werden nach FIFO berechnet: Verkäufe werden den ältesten offenen Kaufchargen zugeordnet. Ohne Angabe wird die GE-Steuer nach den aktuellen Regeln berechnet.</InfoNote>
+          <InfoNote>Profit uses FIFO: sales are matched to the oldest open buys. If you leave the tax empty, GE tax is calculated with the current rules.</InfoNote>
 
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Abbrechen
+              Cancel
             </Button>
             <Button variant="primary" onClick={save} data-testid="save-trade">
-              Speichern
+              Save
             </Button>
           </div>
         </div>

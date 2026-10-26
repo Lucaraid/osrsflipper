@@ -47,13 +47,13 @@ describe("IndexedDB + Export/Import", () => {
     expect(parseBackup(JSON.stringify({ format: "anderes" })).ok).toBe(false);
     const newer = parseBackup(JSON.stringify({ format: "osrs-ge-flipper-backup", version: 99 }));
     expect(newer.ok).toBe(false);
-    if (!newer.ok) expect(newer.errors[0]).toMatch(/neueren Version/);
+    if (!newer.ok) expect(newer.errors[0]).toMatch(/newer version/);
     const base = createBackup({ settings: DEFAULT_SETTINGS, trades: [], capital: [], watchlist: [], alerts: [], alertEvents: [] });
     const invalidTypes = parseBackup(JSON.stringify({ ...base, trades: [{ ...trade, lots: [{ id: "x", date: 1, quantity: -3, price: 1 }] }] }));
     expect(invalidTypes.ok).toBe(false);
     const oversold = parseBackup(JSON.stringify({ ...base, trades: [{ ...trade, sales: [{ id: "s", date: 2, quantity: 50, price: 1, tax: null, fees: 0 }] }] }));
     expect(oversold.ok).toBe(false);
-    if (!oversold.ok) expect(oversold.errors[0]).toMatch(/mehr verkauft/);
+    if (!oversold.ok) expect(oversold.errors[0]).toMatch(/more than you held/);
   });
 });
 

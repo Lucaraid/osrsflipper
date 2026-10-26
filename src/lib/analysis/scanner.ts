@@ -157,7 +157,7 @@ export function buildCandidate(meta: ItemMeta, row: MarketRow, ctx: ScannerConte
 }
 
 /**
- * Ranking (0–100). Gewichte – dokumentiert in docs/03-methodik.md und /methodik:
+ * Ranking (0–100). Gewichte – dokumentiert in docs/03-methodik.md und /methodology:
  *  Gewinnpotenzial beim gewählten Kapital 30 %, ROI 10 %, Liquidität 20 %,
  *  Stabilität (Volatilität & Spread) 15 %, Datenaktualität 10 %, Datenqualität 15 %.
  * Gewinn und ROI fliessen KONSERVATIV ein: jeweils der kleinere Wert aus letzter Beobachtung und
@@ -187,11 +187,11 @@ export function rankFactors(c: FlipCandidate) {
 export function rankCandidate(c: FlipCandidate): { score: number; reasons: Reason[] } {
   const reasons: Reason[] = [];
   if (c.netMargin == null) {
-    reasons.push({ tone: "negative", text: "Marge nicht berechenbar – Preisseite fehlt." });
+    reasons.push({ tone: "negative", text: "Margin can’t be calculated – one price side is missing." });
     return { score: 0, reasons };
   }
   if (c.netMargin <= 0) {
-    reasons.push({ tone: "negative", text: "Keine positive Marge nach GE-Steuer." });
+    reasons.push({ tone: "negative", text: "No positive margin after GE tax." });
     return { score: 0, reasons };
   }
   const f = rankFactors(c);
@@ -199,20 +199,20 @@ export function rankCandidate(c: FlipCandidate): { score: number; reasons: Reaso
   const score = Math.round(100 * f.plausibility * (f.profit * w.profit + f.roi * w.roi + f.liquidity * w.liquidity + f.stability * w.stability + f.freshness * w.freshness + f.quality * w.quality));
 
   if (c.netMarginConservative != null && c.netMarginConservative < c.netMargin * 0.5)
-    reasons.push({ tone: "negative", text: `Marge laut Durchschnittspreisen deutlich kleiner (${Math.round(c.netMarginConservative).toLocaleString("de-CH")} gp) – evtl. Ausreisser.` });
-  if (c.netMarginConservative == null) reasons.push({ tone: "neutral", text: "Marge nicht gegen Durchschnittspreise prüfbar." });
-  if (c.roi != null && c.roi >= 0.03) reasons.push({ tone: "positive", text: `Hoher geschätzter ROI (${(c.roi * 100).toFixed(1)} %).` });
-  if (c.profitAtCapital != null && c.profitAtCapital >= 1_000_000) reasons.push({ tone: "positive", text: "Hohes Gewinnpotenzial beim gewählten Kapital." });
-  if (c.risk.coverage != null && c.risk.coverage >= 5) reasons.push({ tone: "positive", text: "Hohe historische Liquidität (24h-Volumen ≥ 5× Menge)." });
-  if (c.risk.coverage != null && c.risk.coverage < 1) reasons.push({ tone: "negative", text: "Geringe historische Liquidität – Menge evtl. nicht absetzbar." });
-  if (c.risk.coverage == null) reasons.push({ tone: "negative", text: "Handelsvolumen nicht verfügbar." });
-  if (c.quality.ageSec != null && c.quality.freshness < 15) reasons.push({ tone: "negative", text: "Veraltete Preisbeobachtungen." });
-  if (c.risk.components.volatility >= 20) reasons.push({ tone: "negative", text: "Stark schwankender Preis (24 h)." });
-  if (c.limit != null && c.qtyByCapital > c.limit) reasons.push({ tone: "neutral", text: `Begrenztes Handelslimit (${c.limit} / 4 h).` });
-  if (c.limit == null) reasons.push({ tone: "neutral", text: "Handelslimit nicht verfügbar." });
-  if (c.quality.score < 50) reasons.push({ tone: "negative", text: "Geringe Datenqualität." });
-  if (c.taxExempt) reasons.push({ tone: "positive", text: "Steuerfreies Item." });
-  if (c.qty === 0) reasons.push({ tone: "negative", text: "Kapital reicht nicht für 1 Stück." });
+    reasons.push({ tone: "negative", text: `Margin much smaller with average prices (${Math.round(c.netMarginConservative).toLocaleString("de-CH")} gp) – possibly an outlier.` });
+  if (c.netMarginConservative == null) reasons.push({ tone: "neutral", text: "Margin can’t be checked against average prices." });
+  if (c.roi != null && c.roi >= 0.03) reasons.push({ tone: "positive", text: `High estimated ROI (${(c.roi * 100).toFixed(1)}%).` });
+  if (c.profitAtCapital != null && c.profitAtCapital >= 1_000_000) reasons.push({ tone: "positive", text: "High profit potential with your capital." });
+  if (c.risk.coverage != null && c.risk.coverage >= 5) reasons.push({ tone: "positive", text: "High historical liquidity (24h volume ≥ 5× quantity)." });
+  if (c.risk.coverage != null && c.risk.coverage < 1) reasons.push({ tone: "negative", text: "Low historical liquidity – quantity may not sell." });
+  if (c.risk.coverage == null) reasons.push({ tone: "negative", text: "Trade volume not available." });
+  if (c.quality.ageSec != null && c.quality.freshness < 15) reasons.push({ tone: "negative", text: "Stale price observations." });
+  if (c.risk.components.volatility >= 20) reasons.push({ tone: "negative", text: "Strongly fluctuating price (24 h)." });
+  if (c.limit != null && c.qtyByCapital > c.limit) reasons.push({ tone: "neutral", text: `Limited buy limit (${c.limit} / 4 h).` });
+  if (c.limit == null) reasons.push({ tone: "neutral", text: "Buy limit not available." });
+  if (c.quality.score < 50) reasons.push({ tone: "negative", text: "Low data quality." });
+  if (c.taxExempt) reasons.push({ tone: "positive", text: "Tax-free item." });
+  if (c.qty === 0) reasons.push({ tone: "negative", text: "Not enough capital for 1 item." });
   return { score, reasons };
 }
 
@@ -276,13 +276,13 @@ export function sortCandidates(cands: FlipCandidate[], key: SortKey): FlipCandid
 }
 
 export const SORT_LABELS: Record<SortKey, string> = {
-  score: "Ranking",
-  netProfit: "Höchster gesch. Nettogewinn",
-  roi: "Höchster ROI",
-  margin: "Höchste Marge",
-  volume: "Höchstes Handelsvolumen",
-  potentialLimit: "Höchstes Potenzial pro Limit",
-  capital: "Niedrigster Kapitalbedarf",
-  risk: "Niedrigstes Risiko",
-  quality: "Höchste Datenqualität",
+  score: "Score",
+  netProfit: "Highest est. net profit",
+  roi: "Highest ROI",
+  margin: "Highest margin",
+  volume: "Highest trade volume",
+  potentialLimit: "Highest potential per limit",
+  capital: "Lowest capital needed",
+  risk: "Lowest risk",
+  quality: "Highest data quality",
 };
