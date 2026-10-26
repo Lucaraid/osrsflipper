@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root,
+[data-theme="dark"] {
+  --bg: #0e1013;
+  --surface: #15181d;
+  --surface-2: #1b1f26;
+  --surface-3: #232831;
+  --border: #272d36;
+  --border-strong: #353c47;
+  --text: #e4e7eb;
+  --muted: #8a93a1;
+  --faint: #5d6573;
+  --pos: #3fb87f;
+  --pos-soft: rgba(63, 184, 127, 0.12);
+  --neg: #e2595a;
+  --neg-soft: rgba(226, 89, 90, 0.12);
+  --warn: #d6a243;
+  --warn-soft: rgba(214, 162, 67, 0.12);
+  --accent: #d9b44a;
+  --accent-soft: rgba(217, 180, 74, 0.12);
+  --info: #5b9bd5;
+  --chart-grid: #1f242c;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --surface-3: #eceef2;
+  --border: #e1e4e9;
+  --border-strong: #cdd2da;
+  --text: #1b1f25;
+  --muted: #5d6573;
+  --faint: #8a93a1;
+  --pos: #1f8a5a;
+  --pos-soft: rgba(31, 138, 90, 0.1);
+  --neg: #c4383a;
+  --neg-soft: rgba(196, 56, 58, 0.1);
+  --warn: #a8761b;
+  --warn-soft: rgba(168, 118, 27, 0.12);
+  --accent: #9a7414;
+  --accent-soft: rgba(154, 116, 20, 0.1);
+  --info: #2f6fb0;
+  --chart-grid: #eceef2;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-pos: var(--pos);
+  --color-pos-soft: var(--pos-soft);
+  --color-neg: var(--neg);
+  --color-neg-soft: var(--neg-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-info: var(--info);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Scrollbar dezent */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 160ms ease-out;
+}
+
+/* Tabellen */
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-2);
+}
+.data-table td,
+.data-table th {
+  white-space: nowrap;
+}
