@@ -1,16 +1,17 @@
 "use client";
-import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import { Confirm } from "@/components/common/confirm";
 import { EmptyState, Gp, PageHeader, Pct, Stat } from "@/components/common/indicators";
 import { ItemIcon } from "@/components/common/item-icon";
-import { emptyTrade, TradeEditor } from "@/components/trades/trade-editor";
+import { emptyTrade, TradeEditor, tradeWithSale } from "@/components/trades/trade-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
-import { useItemMap } from "@/hooks/market";
+import { useItemMap, useRowMap } from "@/hooks/market";
+import { useSettings } from "@/state/settings";
 import { computeFifo, type TradeStatus } from "@/lib/portfolio/fifo";
 import type { Trade } from "@/lib/portfolio/schemas";
 import { dateTime, duration, gpShort } from "@/lib/format";
@@ -23,7 +24,15 @@ const STATUS_TONE: Record<TradeStatus, "neutral" | "info" | "warn" | "pos"> = { 
 export default function HistoryPage() {
   const { trades, loaded, error, deleteTrade } = useDataStore();
   const items = useItemMap();
-  const [editing, setEditing] = useState<Trade | ReturnType<typeof emptyTrade> | null>(null);
+  const [editing, setEditing] = useState<{ draft: Trade | ReturnType<typeof emptyTrade>; mode?: "buy" | "sell" } | null>(null);
+  const marketRows = useRowMap();
+  const settings = useSettings();
+  /** Verkauf für einen offenen Trade: Menge = offene Stück, Preis = letzter Instant-Buy − Offset (Schätzung) */
+  const startSale = (t: Trade) => {
+    const r = marketRows.get(t.itemId);
+    const price = r?.high != null ? Math.max(1, r.high - settings.priceOffset) : null;
+    setEditing({ draft: tradeWithSale(t, price), mode: "sell" });
+  };
   const [expanded, setExpanded] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"" | TradeStatus>("");
@@ -66,7 +75,7 @@ export default function HistoryPage() {
         title="Flip-Historie"
         description="Alle erfassten Trades mit Teilverkäufen, mehreren Kaufchargen und FIFO-Gewinnberechnung. Daten werden nur lokal in diesem Browser gespeichert."
         actions={
-          <Button variant="primary" onClick={() => setEditing(emptyTrade())} data-testid="new-trade">
+          <Button variant="primary" onClick={() => setEditing({ draft: emptyTrade() })} data-testid="new-trade">
             <Plus /> Trade erfassen
           </Button>
         }
@@ -120,7 +129,7 @@ export default function HistoryPage() {
       <Card className="overflow-hidden">
         {error && <div className="p-4 text-sm text-neg">Lokaler Speicher nicht verfügbar: {error}</div>}
         {loaded && trades.length === 0 ? (
-          <EmptyState title="Noch keine Trades erfasst" action={<Button variant="primary" onClick={() => setEditing(emptyTrade())}><Plus /> Ersten Trade erfassen</Button>}>
+          <EmptyState title="Noch keine Trades erfasst" action={<Button variant="primary" onClick={() => setEditing({ draft: emptyTrade() })}><Plus /> Ersten Trade erfassen</Button>}>
             Erfasse Käufe und Verkäufe, um realisierte Gewinne, ROI und Erfolgsquote zu verfolgen.
           </EmptyState>
         ) : rows.length === 0 ? (
@@ -169,7 +178,12 @@ export default function HistoryPage() {
                         <td className="hidden px-2 py-1.5 text-xs text-muted lg:table-cell">{dateTime(s.lastActivity)}</td>
                         <td className="px-2 py-1.5">
                           <div className="flex justify-end">
-                            <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label="Trade bearbeiten" data-testid="edit-trade">
+                            {s.openQty > 0 && (
+                              <Button size="sm" variant="outline" onClick={() => startSale(t)} aria-label="Verkauf erfassen" data-testid="sell-trade">
+                                <HandCoins /> Verkaufen
+                              </Button>
+                            )}
+                            <Button size="icon" variant="ghost" onClick={() => setEditing({ draft: t })} aria-label="Trade bearbeiten" data-testid="edit-trade">
                               <Pencil />
                             </Button>
                             <Confirm
@@ -241,7 +255,7 @@ export default function HistoryPage() {
           </div>
         )}
       </Card>
-      {editing && <TradeEditor key={editing.id} initial={editing} open onOpenChange={(o) => !o && setEditing(null)} />}
+      {editing && <TradeEditor key={editing.draft.id + (editing.mode ?? "")} initial={editing.draft} mode={editing.mode} open onOpenChange={(o) => !o && setEditing(null)} />}
     </div>
   );
 }

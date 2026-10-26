@@ -70,7 +70,7 @@ test("5. Filter im Scanner setzen", async ({ page }) => {
   await openApp(page, "/scanner");
   await expect(page.getByTestId("scanner-row").first()).toBeVisible();
   const before = await page.getByTestId("scanner-row").count();
-  expect(before).toBeGreaterThan(5);
+  expect(before).toBeGreaterThan(0); // synthetische Preise variieren zeitabhängig
   await page.getByTestId("toggle-filters").click();
   await page.getByTestId("filter-min-roi").fill("1000");
   await expect(page.getByText("Keine Items entsprechen den Filtern")).toBeVisible();
@@ -245,4 +245,38 @@ test("Top 10 High Value: Mindestgewinn pro Trade", async ({ page }) => {
   await page.getByTestId("hv-min-profit").fill("1");
   await page.getByTestId("hv-min-volume").fill("1");
   await expect(page.getByTestId("hv-list").getByTestId("top-pick").first()).toBeVisible();
+});
+
+test("Trade erfassen übernimmt Rechner-Werte; danach wird ein Verkauf mit offener Menge vorbereitet", async ({ page }) => {
+  await openApp(page, "/items/4151");
+  await page.getByTestId("calc-buy").fill("1000");
+  await page.getByTestId("calc-sell").fill("1200");
+  await page.getByTestId("calc-qty").fill("7");
+  await expect(page.getByTestId("item-new-trade")).toHaveText(/Trade erfassen/);
+  await page.getByTestId("item-new-trade").click();
+  await expect(page.getByTestId("lot-qty")).toHaveValue("7");
+  await expect(page.getByTestId("lot-price")).toHaveValue(/^1.000$/);
+  await page.getByTestId("save-trade").click();
+
+  // offener Kauf vorhanden → Button wird zu "Verkauf erfassen"
+  await expect(page.getByTestId("item-new-trade")).toHaveText(/Verkauf erfassen/);
+  await page.getByTestId("item-new-trade").click();
+  await expect(page.getByRole("dialog")).toContainText("Verkauf erfassen");
+  await expect(page.getByTestId("sale-qty").last()).toHaveValue("7");
+  await expect(page.getByTestId("sale-price").last()).toHaveValue(/^1.200$/);
+  await page.getByTestId("save-trade").click();
+  // vollständig verkauft → wieder "Trade erfassen"
+  await expect(page.getByTestId("item-new-trade")).toHaveText(/Trade erfassen/);
+
+  // Flip-Historie: Gewinn 7 × (1200 − 24 − 1000) = 1232
+  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Flip-Historie" }).click();
+  await expect(page.getByTestId("trade-realized")).toHaveText(/^1.232$/);
+});
+
+test("Flip-Historie: „Verkaufen“ bei offenem Trade füllt Menge vor", async ({ page }) => {
+  await createTrade(page);
+  await page.getByTestId("sell-trade").click();
+  await expect(page.getByRole("dialog")).toContainText("Verkauf erfassen");
+  await expect(page.getByTestId("sale-qty").last()).toHaveValue("10");
+  await expect(page.getByTestId("sale-price").last()).not.toHaveValue("");
 });

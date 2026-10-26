@@ -31,7 +31,7 @@ type Draft = Omit<Trade, "lots" | "sales" | "offers"> & {
   offers: Array<Omit<Offer, "quantity" | "price"> & { quantity: number | null; price: number | null }>;
 };
 
-export function emptyTrade(itemId: number | null = null, itemName = ""): Draft {
+export function emptyTrade(itemId: number | null = null, itemName = "", prefill?: { price?: number | null; quantity?: number | null }): Draft {
   const now = Date.now();
   return {
     id: newId(),
@@ -39,12 +39,43 @@ export function emptyTrade(itemId: number | null = null, itemName = ""): Draft {
     itemName,
     createdAt: now,
     updatedAt: now,
-    lots: [{ id: newId(), date: now, quantity: null, price: null, fees: 0 }],
+    lots: [{ id: newId(), date: now, quantity: prefill?.quantity ?? null, price: prefill?.price ?? null, fees: 0 }],
     sales: [],
     offers: [],
     notes: "",
     history: [],
   };
+}
+
+/** Bestehenden Trade mit einer vorausgefüllten Verkaufszeile öffnen (Menge = noch offene Stück). */
+export function tradeWithSale(t: Trade, price: number | null, quantity?: number | null): Draft {
+  const open = computeFifo(t).openQty;
+  return {
+    ...(structuredClone(t) as unknown as Draft),
+    sales: [...t.sales, { id: newId(), date: Date.now(), quantity: quantity ?? (open > 0 ? open : null), price, tax: null, fees: 0 }],
+  };
+}
+
+/** Jüngster Trade zu einem Item, der noch offene Stück hat (gekauft, nicht vollständig verkauft). */
+export function findOpenTrade(trades: Trade[], itemId: number): Trade | undefined {
+  return trades
+    .filter((t) => t.itemId === itemId && computeFifo(t).openQty > 0)
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+}
+
+/**
+ * Entscheidet, was „Trade erfassen“ öffnet:
+ * - offener Trade vorhanden → diesen Trade mit neuer Verkaufszeile (Preis = Verkaufspreis aus dem Rechner bzw. Schätzung, Menge = offene Stück)
+ * - sonst → neuer Trade mit Kaufzeile (Preis & Menge aus dem Rechner bzw. Schätzung)
+ */
+export function prepareTrade(
+  trades: Trade[],
+  item: { id: number; name: string },
+  values: { buy?: number | null; sell?: number | null; qty?: number | null } | undefined,
+): { draft: Draft; mode: "sell" | "buy" } {
+  const open = findOpenTrade(trades, item.id);
+  if (open) return { draft: tradeWithSale(open, values?.sell ?? null), mode: "sell" };
+  return { draft: emptyTrade(item.id, item.name, { price: values?.buy ?? null, quantity: values?.qty ?? null }), mode: "buy" };
 }
 
 function isComplete<T extends { quantity: number | null; price: number | null }>(x: T): x is T & { quantity: number; price: number } {
@@ -55,7 +86,7 @@ function isComplete<T extends { quantity: number | null; price: number | null }>
  * Dialog zum Erfassen/Bearbeiten eines Trades mit mehreren Kaufchargen, Teilverkäufen und
  * offenen Kaufangeboten. Live-Validierung über FIFO verhindert Überverkäufe.
  */
-export function TradeEditor({ initial, open, onOpenChange }: { initial: Trade | Draft; open: boolean; onOpenChange: (o: boolean) => void }) {
+export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Trade | Draft; open: boolean; onOpenChange: (o: boolean) => void; mode?: "buy" | "sell" }) {
   const [d, setD] = useState<Draft>(() => structuredClone(initial) as Draft);
   const [errors, setErrors] = useState<string[]>([]);
   const items = useItemMap();
@@ -90,7 +121,7 @@ export function TradeEditor({ initial, open, onOpenChange }: { initial: Trade | 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={isNew ? "Trade erfassen" : `Trade bearbeiten – ${d.itemName}`} description="Nur tatsächlich ausgeführte Käufe/Verkäufe als Chargen erfassen. Offene Kaufangebote reservieren Kapital." className="max-w-3xl">
+      <DialogContent title={mode === "sell" ? `Verkauf erfassen – ${d.itemName}` : isNew ? "Trade erfassen" : `Trade bearbeiten – ${d.itemName}`} description="Nur tatsächlich ausgeführte Käufe/Verkäufe als Chargen erfassen. Offene Kaufangebote reservieren Kapital." className="max-w-3xl">
         <div className="space-y-4" data-testid="trade-editor">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Item">

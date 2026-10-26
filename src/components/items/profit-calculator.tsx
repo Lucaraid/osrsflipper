@@ -1,5 +1,6 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useCalcStore } from "@/state/calc";
 import { Gp, InfoNote, Pct } from "@/components/common/indicators";
 import { Button } from "@/components/ui/button";
 import { AmountInput, Field } from "@/components/ui/input";
@@ -58,6 +59,11 @@ export function ProfitCalculator({
   const [actualTax, setActualTax] = useState<number | null>(null);
   const [capital, setCapital] = useState<number | null>(defaultCapital);
   const [target, setTarget] = useState<number | null>(null);
+
+  // Aktuelle Eingaben für „Trade erfassen“ bereitstellen (externer Store, kein lokaler State)
+  useEffect(() => {
+    if (itemId != null) useCalcStore.getState().set(itemId, { buy, sell, qty });
+  }, [itemId, buy, sell, qty]);
 
   const r = useMemo(
     () => calculateFlip({ itemId, buyPrice: buy, sellPrice: sell, quantity: qty, otherCosts, actualTax, capital, buyLimit }),

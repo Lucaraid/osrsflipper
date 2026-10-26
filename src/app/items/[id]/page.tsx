@@ -8,7 +8,8 @@ import { Age, EmptyState, ErrorNote, Est, Gp, InfoNote, Pct, QualityBadge, RiskB
 import { ItemIcon } from "@/components/common/item-icon";
 import { WatchButton } from "@/components/common/watch-button";
 import { ProfitCalculator } from "@/components/items/profit-calculator";
-import { emptyTrade, TradeEditor } from "@/components/trades/trade-editor";
+import { emptyTrade, findOpenTrade, prepareTrade, TradeEditor } from "@/components/trades/trade-editor";
+import { useCalcStore } from "@/state/calc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -50,7 +51,8 @@ export default function ItemDetailPage() {
   const ts = useTimeseries(valid ? id : null, lookback);
   const trades = useDataStore((s) => s.trades);
   const myTrades = useMemo(() => trades.filter((t) => t.itemId === id), [trades, id]);
-  const [editing, setEditing] = useState<Trade | ReturnType<typeof emptyTrade> | null>(null);
+  const [editing, setEditing] = useState<{ draft: Trade | ReturnType<typeof emptyTrade>; mode?: "buy" | "sell" } | null>(null);
+  const openTrade = useMemo(() => findOpenTrade(trades, id), [trades, id]);
 
   const points = useMemo(() => ts.data?.points ?? [], [ts.data]);
   const ind = useMemo(() => computeIndicators(points), [points]);
@@ -104,8 +106,16 @@ export default function ItemDetailPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <WatchButton itemId={meta.id} name={meta.name} withLabel className="rounded-md border border-border px-2" />
-          <Button variant="outline" size="sm" onClick={() => setEditing(emptyTrade(meta.id, meta.name))} data-testid="item-new-trade">
-            <Plus /> Trade erfassen
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const v = useCalcStore.getState().byItem[meta.id] ?? { buy: cand?.estBuy ?? null, sell: cand?.estSell ?? null, qty: cand && cand.qty > 0 ? cand.qty : null };
+              setEditing(prepareTrade(trades, meta, { buy: v.buy ?? cand?.estBuy, sell: v.sell ?? cand?.estSell, qty: v.qty }));
+            }}
+            data-testid="item-new-trade"
+          >
+            <Plus /> {openTrade ? "Verkauf erfassen" : "Trade erfassen"}
           </Button>
           <Button asChild variant="ghost" size="sm">
             <a href={wikiUrl} target="_blank" rel="noreferrer">
@@ -226,14 +236,14 @@ export default function ItemDetailPage() {
                   {s.avgHoldMs != null && <span className="text-xs text-muted">Haltedauer Ø {duration(s.avgHoldMs)}</span>}
                   <span className="flex-1" />
                   <Gp value={s.realized} colored />
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(t)}>Bearbeiten</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditing({ draft: t })}>Bearbeiten</Button>
                 </li>
               );
             })}
           </ul>
         )}
       </Card>
-      {editing && <TradeEditor key={editing.id} initial={editing} open onOpenChange={(o) => !o && setEditing(null)} />}
+      {editing && <TradeEditor key={editing.draft.id + (editing.mode ?? "")} initial={editing.draft} mode={editing.mode} open onOpenChange={(o) => !o && setEditing(null)} />}
     </div>
   );
 }

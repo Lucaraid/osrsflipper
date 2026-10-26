@@ -1,7 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { emptyTrade, findOpenTrade, prepareTrade, TradeEditor } from "@/components/trades/trade-editor";
+import type { Trade } from "@/lib/portfolio/schemas";
+import { useCalcStore } from "@/state/calc";
+import { useDataStore } from "@/state/data";
 import { Age, PageHeader } from "@/components/common/indicators";
 import { ItemPicker } from "@/components/items/item-picker";
 import { ProfitCalculator } from "@/components/items/profit-calculator";
@@ -22,6 +28,8 @@ function CalculatorInner() {
   const params = useSearchParams();
   const router = useRouter();
   const settings = useSettings();
+  const trades = useDataStore((s) => s.trades);
+  const [editing, setEditing] = useState<{ draft: Trade | ReturnType<typeof emptyTrade>; mode: "buy" | "sell" } | null>(null);
   const items = useItemMap();
   const rows = useRowMap();
   const now = useNow();
@@ -70,6 +78,23 @@ function CalculatorInner() {
           <ProfitCalculator key={params.toString()} itemId={itemId} buyLimit={meta?.limit ?? null} prefill={prefill} marketPrices={market} defaultCapital={settings.defaultCapital} />
         </CardBody>
       </Card>
+      {meta && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            variant="primary"
+            onClick={() => setEditing(prepareTrade(trades, meta, useCalcStore.getState().byItem[meta.id]))}
+            data-testid="calc-create-trade"
+          >
+            <Plus /> {findOpenTrade(trades, meta.id) ? "Verkauf erfassen" : "Trade erfassen"}
+          </Button>
+          <span className="text-xs text-muted">
+            {findOpenTrade(trades, meta.id)
+              ? "Du hast noch offene Stück dieses Items – es wird ein Verkauf mit Verkaufspreis aus dem Rechner und der offenen Menge vorbereitet."
+              : "Übernimmt Kaufpreis und Stückzahl aus dem Rechner."}
+          </span>
+        </div>
+      )}
+      {editing && <TradeEditor key={editing.draft.id + editing.mode} initial={editing.draft} mode={editing.mode} open onOpenChange={(o) => !o && setEditing(null)} />}
     </div>
   );
 }
