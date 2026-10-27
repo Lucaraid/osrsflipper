@@ -98,6 +98,24 @@ export const TAX_RULES: TaxRules = Object.freeze({
   exemptItems: TAX_EXEMPT_ITEMS,
 });
 
+/**
+ * Frühere Sätze – nur für historische Verkäufe (z. B. importierte Trades), geprüft am 2026-10-27:
+ * - Einführung am 2021-12-09 mit 1 % („All transactions on the Grand Exchange are now subject to a 1% tax.“)
+ * - 2025-05-29: 2 % (TAX_RULES); gleichzeitig wurden weitere Items befreit.
+ * Für die 1-%-Periode wird die aktuelle Ausnahmeliste verwendet (sie war damals kürzer → für die
+ * 2025 neu befreiten Items wird die Steuer leicht unterschätzt). Stichtage gelten ab 00:00 UTC.
+ */
+export const TAX_INTRODUCED = "2021-12-09";
+export const TAX_RULES_1_PERCENT: TaxRules = Object.freeze({ ...TAX_RULES, rate: 0.01, effectiveFrom: TAX_INTRODUCED });
+const NO_TAX: TaxRules = Object.freeze({ ...TAX_RULES, rate: 0, effectiveFrom: "" });
+
+/** Steuerregeln, die zum Zeitpunkt eines Verkaufs galten. */
+export function taxRulesAt(ms: number): TaxRules {
+  if (ms >= Date.parse(TAX_RULES.effectiveFrom)) return TAX_RULES;
+  if (ms >= Date.parse(TAX_INTRODUCED)) return TAX_RULES_1_PERCENT;
+  return NO_TAX;
+}
+
 export function isTaxExempt(itemId: number | null | undefined, rules: TaxRules = TAX_RULES): boolean {
   if (itemId == null) return false;
   return Object.prototype.hasOwnProperty.call(rules.exemptItems, itemId);

@@ -21,6 +21,8 @@ interface DataState {
   alertEvents: AlertEvent[];
   load: () => Promise<void>;
   saveTrade: (t: Trade, action: string, detail: string) => Promise<{ ok: true } | { ok: false; errors: string[] }>;
+  /** Mehrere Trades auf einmal speichern (Import). Alle werden validiert; bei Fehlern wird nichts gespeichert. */
+  saveTrades: (list: Trade[], action: string, detail: string) => Promise<{ ok: true } | { ok: false; errors: string[] }>;
   deleteTrade: (id: string) => Promise<void>;
   addCapital: (e: CapitalEvent) => Promise<void>;
   deleteCapital: (id: string) => Promise<void>;
@@ -76,6 +78,22 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (errors.length) return { ok: false, errors };
     await db.put("trades", parsed.data);
     set({ trades: [parsed.data, ...get().trades.filter((x) => x.id !== t.id)].sort(byDateDesc) });
+    return { ok: true };
+  },
+  saveTrades: async (list, action, detail) => {
+    const now = Date.now();
+    const valid: Trade[] = [];
+    for (const t of list) {
+      const candidate = { ...t, updatedAt: now, history: [...t.history, { at: now, action, detail: detail.slice(0, 500) }].slice(-500) };
+      const parsed = TradeSchema.safeParse(candidate);
+      if (!parsed.success) return { ok: false, errors: parsed.error.issues.map((i) => `${t.itemName}: ${i.path.join(".")}: ${i.message}`) };
+      const errors = validateTrade(parsed.data);
+      if (errors.length) return { ok: false, errors: errors.map((e) => `${t.itemName}: ${e}`) };
+      valid.push(parsed.data);
+    }
+    await db.putMany("trades", valid);
+    const ids = new Set(valid.map((t) => t.id));
+    set({ trades: [...valid, ...get().trades.filter((x) => !ids.has(x.id))].sort(byDateDesc) });
     return { ok: true };
   },
   deleteTrade: async (id) => {

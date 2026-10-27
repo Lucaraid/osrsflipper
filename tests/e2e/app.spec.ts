@@ -300,3 +300,47 @@ test("Flip-Historie: „Verkaufen“ bei offenem Trade füllt Menge vor", async 
   await expect(page.getByTestId("sale-qty").last()).toHaveValue("10");
   await expect(page.getByTestId("sale-price").last()).not.toHaveValue("");
 });
+
+/** Datum im Format des Flipping-Utilities-Exports (Ortszeit, 12 h) */
+function fuDate(msAgo: number) {
+  const d = new Date(Date.now() - msAgo);
+  const p = (n: number) => String(n).padStart(2, "0");
+  const h = d.getHours() % 12 || 12;
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(h)}:${p(d.getMinutes())} ${d.getHours() < 12 ? "AM" : "PM"}`;
+}
+
+test("Import aus RuneLite (Flipping Utilities): Vorschau, Import, erneuter Import erkennt Duplikate", async ({ page }) => {
+  const H = 3_600_000;
+  const csv = [
+    "# Displaying trades for selected time interval: All",
+    "name,date,quantity,price,state",
+    `Abyssal whip,${fuDate(5 * H)},2,1000000,BOUGHT`,
+    `Abyssal whip,${fuDate(4 * H)},2,1100000,SOLD`,
+    "# Total profit: 200000",
+    "",
+    `Old school bond,${fuDate(3 * H)},1,9000000,BOUGHT`,
+    `Not a real item,${fuDate(2 * H)},5,100,SOLD`,
+    `Abyssal whip,${fuDate(1 * H)},1,1200000,SOLD`,
+  ].join("\n");
+  const file = { name: "Accountwide.csv", mimeType: "text/csv", buffer: Buffer.from(csv) };
+
+  await openApp(page, "/history");
+  await page.getByTestId("fu-import").click();
+  await page.getByTestId("fu-file").setInputFiles(file);
+  await expect(page.getByTestId("fu-summary")).toContainText("2 trades · 1 finished · 1 still open");
+  await expect(page.getByTestId("fu-dialog")).toContainText("Skipped 1 sell (1 item)");
+  await expect(page.getByTestId("fu-unknown")).toContainText("1 item name not found");
+  await expect(page.getByTestId("fu-row")).toHaveCount(2);
+  await page.getByTestId("fu-confirm").click();
+  await expect(page.getByTestId("fu-dialog")).toHaveCount(0);
+
+  await expect(page.getByTestId("trade-row")).toHaveCount(2);
+  // 2 × (1'100'000 − 22'000 Steuer − 1'000'000) = 156'000
+  await expect(page.getByTestId("trade-row").filter({ hasText: "Abyssal whip" })).toContainText(/156.000/);
+
+  // dieselbe Datei nochmals: nichts Neues
+  await page.getByTestId("fu-import").click();
+  await page.getByTestId("fu-file").setInputFiles(file);
+  await expect(page.getByTestId("fu-summary")).toContainText("2 already imported (hidden)");
+  await expect(page.getByTestId("fu-confirm")).toBeDisabled();
+});
