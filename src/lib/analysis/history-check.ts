@@ -117,8 +117,17 @@ export function checkHistory(h: MonthAgg | null, cur: CurrentPrices): HistoryChe
   };
 }
 
+export type HistoryFlag = "thin" | "crash" | "erratic" | "spike";
+
+export const HISTORY_FLAG_LABEL: Record<HistoryFlag, string> = {
+  thin: "Little history",
+  crash: "Crashing",
+  erratic: "Erratic",
+  spike: "Price spike",
+};
+
 /** Ausschlussgrund für die Top 10 (null = unbedenklich). */
-export function historyExclusion(hc: HistoryCheck | null): string | null {
+export function historyExclusion(hc: HistoryCheck | null): HistoryFlag | null {
   if (!hc) return null;
   // Grundlegende Ursachen zuerst melden (eine Spitze relativ zum fallenden Trend ist Folge des Absturzes)
   if (hc.thin) return "thin";

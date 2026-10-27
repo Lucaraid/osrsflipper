@@ -1,4 +1,4 @@
-import { historyExclusion } from "./history-check";
+import { historyExclusion, type HistoryFlag } from "./history-check";
 import type { FlipCandidate } from "./scanner";
 
 /**
@@ -18,6 +18,9 @@ import type { FlipCandidate } from "./scanner";
  * Datenqualität ≥ 60, plausible Marge, keine veralteten Preise. Mit 30-Tage-Grundlinie zusätzlich ausgeschlossen:
  * aktuelle Preisspitze, wiederkehrende Spitzen bei erhöhtem Preis, Absturz, sprunghafter Preis, < 14 Handelstage.
  * Gewinne werden konservativ gerechnet (kleinere der beiden Margen).
+ *
+ * Mit `history: "only"` wird die Auswahl umgekehrt: nur Items, die der 30-Tage-Abgleich ausschliesst
+ * (Tab „Volatile“ – zur manuellen Prüfung, alle übrigen Kriterien gelten weiterhin).
  */
 
 export interface TopOptions {
@@ -29,6 +32,8 @@ export interface TopOptions {
   /** Items, die ausgeschlossen werden (z. B. bereits gehalten) */
   excludeIds?: Set<number>;
   limit?: number;
+  /** "exclude" (Standard): Ausschlüsse des 30-Tage-Abgleichs weglassen; "only": nur diese zeigen */
+  history?: "exclude" | "only";
 }
 
 export interface TopPick {
@@ -44,6 +49,8 @@ export interface TopPick {
   profit: number;
   volumeWeaker: number;
   coverage: number;
+  /** Ausschlussgrund aus dem 30-Tage-Abgleich (nur bei history "only" gesetzt) */
+  flag: HistoryFlag | null;
 }
 
 export interface TopResult {
@@ -62,7 +69,9 @@ export function topBuys(cands: FlipCandidate[], o: TopOptions): TopResult {
     if (c.netMargin == null || c.netMargin <= 0 || c.netMarginConservative == null || c.netMarginConservative <= 0 || c.estBuy == null || c.qty <= 0) { ex.noMargin++; continue; }
     if (c.quality.score < TOP_MIN_QUALITY || c.quality.components.plausibility < 10) { ex.quality++; continue; }
     if (c.quality.freshness <= 0) { ex.stale++; continue; }
-    if (historyExclusion(c.histCheck)) { ex.history++; continue; }
+    const flag = historyExclusion(c.histCheck);
+    // history "exclude": markierte Items zählen als ausgeschlossen; "only": unmarkierte (stehen in der Standard-Liste)
+    if ((o.history === "only") !== (flag != null)) { ex.history++; continue; }
     const weaker = c.volWeakerTypical ?? 0;
     if (weaker < o.minVolume24h || weaker <= 0) { ex.lowVolume++; continue; }
     const maxByVolume = o.minCoverage > 0 ? Math.floor(weaker / o.minCoverage) : Infinity;
@@ -80,6 +89,7 @@ export function topBuys(cands: FlipCandidate[], o: TopOptions): TopResult {
       profit: qty * margin,
       volumeWeaker: weaker,
       coverage: weaker / qty,
+      flag,
     });
   }
   const key = (p: TopPick) => (o.sort === "profit" ? p.profit : o.sort === "roi" ? p.roi : p.c.score);

@@ -120,4 +120,13 @@ describe("Scanner & Top 10 mit 30-Tage-Grundlinie", () => {
     expect(r.picks[0]!.qty).toBe(100); // ⌊1'000 ÷ 10⌋ statt ⌊5'000 ÷ 10⌋
     expect(r.picks[0]!.volumeWeaker).toBe(1_000);
   });
+  it("Tab Volatile: nur vom 30-Tage-Abgleich ausgeschlossene Items, mit Grund", () => {
+    const spiking = buildCandidate(meta({ id: 1 }), row({ id: 1 }), { ...ctx, history: { "1": hist({ median7: 900, median30: 900 }) } });
+    const normal = buildCandidate(meta({ id: 2, name: "B" }), row({ id: 2 }), { ...ctx, history: { "2": hist() } });
+    const r = topBuys([spiking, normal], { minVolume24h: 500, minCoverage: 10, sort: "profit", history: "only" });
+    expect(r.picks.map((p) => [p.c.id, p.flag])).toEqual([[1, "spike"]]);
+    expect(r.excluded.history).toBe(1);
+    // Ohne Grundlinie ist nichts markiert
+    expect(topBuys([buildCandidate(meta(), row(), ctx)], { minVolume24h: 500, minCoverage: 10, sort: "profit", history: "only" }).picks).toEqual([]);
+  });
 });

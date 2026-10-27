@@ -13,7 +13,7 @@ Diese Datei fasst alles Wichtige zusammen, damit eine neue Sitzung ohne den alte
 
 OSRS Grand Exchange Flipper – Next.js-Webapp, die Flip-Gelegenheiten aus der **OSRS Wiki Real-time Prices API v2** (`https://prices.runescape.wiki/api/v2/osrs`) berechnet und eigene Trades trackt. Ausführliche Doku: `README.md`, `docs/01–05`.
 
-Seiten (UI englisch): Dashboard · **Top 10 Buys** (Tabs Standard + High Value ≥ 2M Gewinn/Trade) · Flip Scanner · Item-Detail (über Suche Ctrl+K) · Profit Calculator · My Portfolio · Flip History (Tracker) · Watchlist · Settings · Methodology (`/methodology`) · Privacy (`/privacy`).
+Seiten (UI englisch): Dashboard · **Top 10 Buys** (Tabs Standard + High Value ≥ 2M Gewinn/Trade + Volatile = vom 30-Tage-Abgleich ausgeschlossene Items zur manuellen Prüfung) · Flip Scanner · Item-Detail (über Suche Ctrl+K) · Profit Calculator · My Portfolio · Flip History (Tracker) · Watchlist · Settings · Methodology (`/methodology`) · Privacy (`/privacy`).
 
 ## Befehle
 
@@ -65,7 +65,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict (`noUnchecke
 7. **Design fröhlicher, Standard = helles Design in Pergament-Braun wie das OSRS Wiki** (dunkel = warmes Holz-Braun, Umschalter oben rechts). Farben nur über Tokens in `globals.css`. App vereinfacht: Marktanalyse, Preisalarme und Item-Explorer-Liste entfernt (Alarm-Daten bleiben im Speicher-/Backup-Format für Kompatibilität), Einstellungen ohne Datenaktualität/Positionsregeln, Dashboard mit 6 Kennzahlen.
 8. **Ganze App auf Englisch.** Interne Werte bleiben deutsch, damit gespeicherte Daten gültig bleiben (Trade-Status `offen/teilweise/geschlossen`, Risiko/Qualität `niedrig/mittel/hoch/unzureichend`, Dateiname `osrs-ge-flipper-daten.json`) – Anzeige über Label-Maps (`LEVEL_LABEL`, `STATUS_LABEL`). Code-Kommentare bleiben deutsch.
 9. **Kaufchargen ohne Gebühren-Feld** (gibt es im GE nicht); beim Verkauf bleibt das optionale Feld für die tatsächliche Steuer.
-10. **Scanner/Top 10 gegen die letzten 30 Tage absichern** (Items, die regelmässig ausschlagen oder fallen, sollen nicht als gute Flips erscheinen) → `docs/03-methodik.md` Abschnitt 6a.
+10. **Scanner/Top 10 gegen die letzten 30 Tage absichern** (Items, die regelmässig ausschlagen oder fallen, sollen nicht als gute Flips erscheinen) → `docs/03-methodik.md` Abschnitt 6a. Ausgeschlossene Items nicht verstecken, sondern im Tab **Volatile** mit Grund zeigen (Nutzer entscheidet selbst).
 
 ## Bekannte Grenzen / Ideen
 

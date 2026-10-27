@@ -77,6 +77,16 @@ export const SettingsSchema = z.object({
       hideHeld: z.boolean().default(false),
     })
     .default({ minProfit: 2_000_000, capitalPerFlip: null, minVolume24h: 20, minCoverage: 3, sort: "profit", hideHeld: false }),
+  /** Tab „Volatile“: Items, die der 30-Tage-Abgleich aus den Top 10 ausschliesst (manuell prüfen) */
+  volatile: z
+    .object({
+      minVolume24h: z.number().int().nonnegative().max(1e9).default(500),
+      minCoverage: z.number().min(0).max(1000).default(10),
+      capitalPerFlip: z.number().positive().max(1e13).nullable().default(null),
+      sort: z.enum(["score", "profit", "roi"]).default("profit"),
+      hideHeld: z.boolean().default(false),
+    })
+    .default({ minVolume24h: 500, minCoverage: 10, capitalPerFlip: null, sort: "profit", hideHeld: false }),
   notificationsEnabled: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof SettingsSchema>;

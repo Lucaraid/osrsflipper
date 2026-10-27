@@ -90,7 +90,7 @@ export default function MethodologyPage() {
           <tr><td>Thin history</td><td>fewer than 14 of 30 days traded</td><td>excluded from Top 10, score × 0.8</td></tr>
         </tbody>
       </table>
-      <p>Each flag appears as a reason on the item (scanner tooltip, Top 10 card, item page). If the 30-day history can’t be loaded, only the 24h checks apply and a notice is shown.</p>
+      <p>Items excluded from the Top 10 by these rules aren’t hidden: the <b>Volatile</b> tab lists them (same margin and volume criteria, up to 20, sorted by profit by default) with the reason, for you to check against the chart and decide yourself. Each flag appears as a reason on the item (scanner tooltip, Top 10 card, item page). If the 30-day history can’t be loaded, only the 24h checks apply and a notice is shown.</p>
 
       <H>Market indicators (item page)</H>
       <ul>

@@ -97,6 +97,8 @@ Je Item (Tagesmittel = (Ø Buy + Ø Sell)/2, Lücken nicht interpoliert):
 | Ausreisser-Volumen | 24h-Volumen > 3 × normales Volumen | Hinweis; Menge ohnehin nach min(24 h, normaler Tag) |
 | Wenig Historie | < 14 von 30 Tagen gehandelt | Top 10 ausgeschlossen, Score × 0,8 |
 
+Ausgeschlossene Items verschwinden nicht: Der Tab **Volatile** auf „Top 10 Buys“ zeigt genau die Items, die der Abgleich aus den Top 10 nimmt (gleiche Margen-, Qualitäts- und Volumenkriterien, eigene Einstellungen, bis 20 Einträge, Standard-Sortierung nach Gewinn), jeweils mit Grund und allen 30-Tage-Warnungen – zur manuellen Prüfung.
+
 Der Historienfaktor ist das Produkt der Abschläge, mindestens 0,3. Kalibrierung am 27.10.2026 an ca. 700 liquiden Items (≥ 1'000 gp, ≥ 100 Stück/Tag, positive Marge): Spitze ≈ 4 %, wiederkehrende Spitzen ≈ 4 %, Absturz ≈ 5 %, sprunghaft ≈ 5 %, Spread > 2× ≈ 20 %. Gegenprobe gleichentags: Von 424 liquiden Kandidaten mit positiver Marge fielen 123 heraus (45 sprunghaft, 40 Spitze, 37 Absturz, 1 wenig Historie), überwiegend billige Items mit starken Tagesausschlägen.
 
 ## 7. Ranking (0–100)

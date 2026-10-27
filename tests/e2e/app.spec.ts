@@ -314,4 +314,9 @@ test("30-Tage-Abgleich: Grundlinie geladen, Preisspitze markiert, Top 10 zeigt 3
   await openApp(page, "/top");
   await expect(page.getByTestId("top-pick").first().getByTestId("history-summary")).toContainText("30 d:");
   await expect(page.getByTestId("top-list")).not.toContainText("Abyssal whip");
+  // Sprunghaftes Item (Coal) fehlt in Standard, steht im Tab „Volatile“ mit Warnung
+  await expect(page.getByTestId("top-list")).not.toContainText("Coal");
+  await page.getByTestId("tab-volatile").click();
+  const coal = page.getByTestId("vol-list").getByTestId("top-pick").filter({ hasText: "Coal" });
+  await expect(coal.getByTestId("vol-flag")).toContainText("Erratic");
 });
