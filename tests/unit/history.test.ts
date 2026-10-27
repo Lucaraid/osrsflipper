@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { aggregateMonth, FULL_VOLUME_SINCE, median, type DayBlock } from "@/lib/market/history";
 import { checkHistory, historyExclusion } from "@/lib/analysis/history-check";
 import { buildCandidate, type ScannerContext } from "@/lib/analysis/scanner";
-import { topBuys } from "@/lib/analysis/top";
+import { downsideEstimate, topBuys } from "@/lib/analysis/top";
 import type { BlockAgg, DayAgg, ItemMeta, MarketRow, MonthAgg } from "@/lib/market/types";
 
 /** Kontrollierte Testdaten (keine echten Marktwerte). */
@@ -126,7 +126,40 @@ describe("Scanner & Top 10 mit 30-Tage-Grundlinie", () => {
     const r = topBuys([spiking, normal], { minVolume24h: 500, minCoverage: 10, sort: "profit", history: "only" });
     expect(r.picks.map((p) => [p.c.id, p.flag])).toEqual([[1, "spike"]]);
     expect(r.excluded.history).toBe(1);
+    // markiert → Risiko mindestens hoch
+    expect(spiking.risk.riskClass).toBe("hoch");
+    expect(normal.risk.raisedByHistory).toBe(false);
     // Ohne Grundlinie ist nichts markiert
     expect(topBuys([buildCandidate(meta(), row(), ctx)], { minVolume24h: 500, minCoverage: 10, sort: "profit", history: "only" }).picks).toEqual([]);
+  });
+});
+
+describe("Tab Volatile: Verlustrisiko", () => {
+  // Kauf 1'001, Verkauf 1'099, Steuer 21 → Marge 77
+  it("Preisspitze: Rückfall auf das 7-Tage-Niveau, ausgehend vom Verkaufspreis zur konservativen Marge", () => {
+    const c = buildCandidate(meta(), row(), withHist(hist({ median7: 700, median30: 700, noise: 0.01 })));
+    expect(c.histCheck?.spike).toBe(true);
+    const d = downsideEstimate(c, 10, 77)!;
+    expect(d.scenario).toBe("fallback");
+    // Verkauf 1'099 (netto 1'078 = 1'001 + 77) ÷ (1 + 50 %) = 732 → netto 718 → Verlust 283 pro Stück
+    expect(d.sellPrice).toBe(Math.floor(1_099 / 1.5));
+    expect(d.perItem).toBe(1_001 - (d.sellPrice - Math.floor(d.sellPrice * 0.02)));
+    expect(d.total).toBe(d.perItem * 10);
+  });
+  it("sprunghaft: eine typische Tagesbewegung; Absturz: ein weiterer Tag im Trend; tiefster Preis zählt", () => {
+    const erratic = buildCandidate(meta(), row(), withHist(hist({ dailyVol: 0.3 })));
+    expect(downsideEstimate(erratic, 1, 77)?.scenario).toBe("swing");
+    const both = buildCandidate(meta(), row(), withHist(hist({ dailyVol: 0.3, trend7: -0.4 })));
+    expect(downsideEstimate(both, 1, 77)?.scenario).toBe("trend");
+    // kleine Bewegung bei grosser Marge → kein Verlust
+    const mild = buildCandidate(meta(), row({ low: 700, high: 1_100 }), withHist(hist({ dailyVol: 0.26 })));
+    expect(downsideEstimate(mild, 1, 300)?.perItem).toBe(0);
+    expect(downsideEstimate(buildCandidate(meta(), row(), withHist(hist({ days: 5 }))), 1, 77)).toBeNull();
+  });
+  it("Sortierung „reward“: Gewinn ÷ Verlustrisiko", () => {
+    const small = buildCandidate(meta({ id: 1 }), row({ id: 1 }), { ...ctx, history: { "1": hist({ dailyVol: 0.26 }) } });
+    const big = buildCandidate(meta({ id: 2, name: "B" }), row({ id: 2 }), { ...ctx, history: { "2": hist({ dailyVol: 0.9 }) } });
+    const r = topBuys([big, small], { minVolume24h: 500, minCoverage: 10, sort: "reward", history: "only" });
+    expect(r.picks.map((p) => p.c.id)).toEqual([1, 2]);
   });
 });

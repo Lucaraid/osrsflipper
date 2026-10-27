@@ -1,5 +1,5 @@
 "use client";
-import { Calculator, ShoppingCart, TriangleAlert } from "lucide-react";
+import { Calculator, ChartLine, ShoppingCart, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Age, EmptyState, ErrorNote, Est, Gp, InfoNote, PageHeader, Pct, QualityBadge, RiskBadge, Skeleton } from "@/components/common/indicators";
@@ -14,15 +14,23 @@ import { Tip } from "@/components/ui/tooltip";
 import { useCandidates, useMarket } from "@/hooks/market";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePortfolio } from "@/hooks/portfolio";
-import { HISTORY_FLAG_LABEL } from "@/lib/analysis/history-check";
+import { HISTORY_FLAG_LABEL, type HistoryFlag } from "@/lib/analysis/history-check";
 import { historyReasons } from "@/lib/analysis/scanner";
-import { topBuys, TOP_MIN_QUALITY, type TopPick } from "@/lib/analysis/top";
+import { topBuys, TOP_MIN_QUALITY, type Downside, type TopPick } from "@/lib/analysis/top";
 import { gp, gpShort } from "@/lib/format";
 import { newId } from "@/lib/storage/db";
 import { cn } from "@/lib/utils";
 import { useDataStore } from "@/state/data";
 import { useSettings, useSettingsStore } from "@/state/settings";
 import { toast } from "@/state/toasts";
+
+const DOWNSIDE_LABEL: Record<Downside["scenario"], string> = {
+  fallback: "If it falls back to its 7-day level",
+  trend: "If the downtrend continues one more day",
+  swing: "After one typical daily swing down",
+};
+
+const FLAG_ORDER: HistoryFlag[] = ["spike", "erratic", "crash", "thin"];
 
 function PickCard({ p, rank }: { p: TopPick; rank: number }) {
   const saveTrade = useDataStore((s) => s.saveTrade);
@@ -67,6 +75,23 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
         <div className="mt-2 rounded-md border border-neg/30 bg-neg-soft px-2.5 py-1.5 text-[11px] text-neg" data-testid="vol-flag">
           <div className="flex items-center gap-1 font-semibold"><TriangleAlert className="size-3.5" /> {HISTORY_FLAG_LABEL[p.flag]} – check the chart before buying</div>
           {warnings.map((w) => <div key={w.text}>{w.text}</div>)}
+          <div className="mt-1 text-text" data-testid="vol-downside">
+            {p.downside ? (
+              <Tip content="Rough estimate from the 30-day history, not a forecast. Assumes you sell the whole quantity at that price after 2% tax. Real losses can be larger.">
+                <span className="cursor-help">
+                  {DOWNSIDE_LABEL[p.downside.scenario]} (sell ≈ {gp(p.downside.sellPrice)}<Est />):{" "}
+                  {p.downside.perItem === 0 ? (
+                    <b className="text-pos">still no loss</b>
+                  ) : (
+                    <b className="text-neg">−{gpShort(p.downside.total)} (−{gp(p.downside.perItem)} each)</b>
+                  )}
+                  {" "}vs. <b className="text-pos">+{gpShort(p.profit)}</b> profit
+                </span>
+              </Tip>
+            ) : (
+              <span className="text-muted">Downside not available – too little history to estimate.</span>
+            )}
+          </div>
         </div>
       )}
 
@@ -127,6 +152,13 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
         <Button size="sm" variant="primary" onClick={createOffer} disabled={busy} data-testid="top-create-offer">
           <ShoppingCart /> Log buy offer
         </Button>
+        {p.flag && (
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/items/${c.id}`}>
+              <ChartLine /> Chart
+            </Link>
+          </Button>
+        )}
         <Button size="sm" variant="outline" asChild>
           <Link href={`/calculator?id=${c.id}&buy=${c.estBuy}&sell=${c.estSell}&qty=${p.qty}`}>
             <Calculator /> Calculator
@@ -141,9 +173,10 @@ interface TopConfig {
   minVolume24h: number;
   minCoverage: number;
   capitalPerFlip: number | null;
-  sort: "score" | "profit" | "roi";
+  sort: "score" | "profit" | "roi" | "reward";
   hideHeld: boolean;
   minProfit?: number;
+  flags?: HistoryFlag[];
 }
 
 /** Steuerleiste + Liste; wird für „Standard“ und „High Value“ mit unterschiedlicher Konfiguration verwendet. */
@@ -171,10 +204,21 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
   const { candidates, isLoading, error } = useCandidates(perFlip);
 
   const held = useMemo(() => new Set(trades.filter((tr) => tr.offers.length > 0 || summary.summaries.some((s) => s.tradeId === tr.id && s.openQty > 0)).map((tr) => tr.itemId)), [trades, summary.summaries]);
-  const result = useMemo(
-    () => topBuys(candidates, { minVolume24h: cfg.minVolume24h, minCoverage: cfg.minCoverage, sort: cfg.sort, minProfit: cfg.minProfit, excludeIds: cfg.hideHeld ? held : undefined, limit, history: vol ? "only" : "exclude" }),
-    [candidates, cfg.minVolume24h, cfg.minCoverage, cfg.sort, cfg.minProfit, cfg.hideHeld, held, limit, vol],
-  );
+  // Volatile: alle markierten Items holen, Anzahl je Grund zählen, dann nach gewählten Gründen filtern
+  const { result, flagCounts } = useMemo(() => {
+    const sort = !vol && cfg.sort === "reward" ? "profit" : cfg.sort;
+    const r = topBuys(candidates, { minVolume24h: cfg.minVolume24h, minCoverage: cfg.minCoverage, sort, minProfit: cfg.minProfit, excludeIds: cfg.hideHeld ? held : undefined, limit: vol ? Infinity : limit, history: vol ? "only" : "exclude" });
+    const counts: Partial<Record<HistoryFlag, number>> = {};
+    if (!vol) return { result: r, flagCounts: counts };
+    for (const p of r.picks) if (p.flag) counts[p.flag] = (counts[p.flag] ?? 0) + 1;
+    const sel = cfg.flags ?? [];
+    const picks = (sel.length ? r.picks.filter((p) => p.flag && sel.includes(p.flag)) : r.picks).slice(0, limit);
+    return { result: { ...r, picks }, flagCounts: counts };
+  }, [candidates, cfg.minVolume24h, cfg.minCoverage, cfg.sort, cfg.minProfit, cfg.hideHeld, cfg.flags, held, limit, vol]);
+  const toggleFlag = (f: HistoryFlag) => {
+    const sel = cfg.flags ?? [];
+    setCfg({ flags: sel.includes(f) ? sel.filter((x) => x !== f) : [...sel, f] });
+  };
   const total = result.picks.reduce((a, p) => a + p.profit, 0);
   const totalCapital = result.picks.reduce((a, p) => a + p.capital, 0);
   // High Value: Kandidaten knapp unter dem Mindestgewinn (zur Orientierung, klar getrennt)
@@ -209,6 +253,7 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
             <option value="score">Balanced</option>
             <option value="profit">Highest profit per trade</option>
             <option value="roi">Highest ROI</option>
+            {vol && <option value="reward">Profit vs. downside</option>}
           </Select>
         </Field>
         <label className="flex items-end gap-1.5 pb-2 text-xs text-muted">
@@ -230,6 +275,30 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
             These items have enough volume and a positive margin right now but are left out of the Standard list by the 30-day check: a current price spike, a crash, an erratic price or too little history.
             The margin may disappear before your offer sells. Check the price chart (item page) and decide yourself – buy smaller quantities if you take the risk.
           </InfoNote>
+        </div>
+      )}
+
+      {vol && Object.keys(flagCounts).length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs" data-testid="vol-flags">
+          <span className="text-muted">Show:</span>
+          {FLAG_ORDER.filter((f) => flagCounts[f]).map((f) => {
+            const on = (cfg.flags ?? []).includes(f);
+            return (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleFlag(f)}
+                className={cn("rounded-full border px-2.5 py-1 font-semibold", on ? "border-accent bg-accent text-accent-fg" : "border-border bg-surface text-muted hover:border-border-strong")}
+                data-testid={`vol-flag-${f}`}
+              >
+                {HISTORY_FLAG_LABEL[f]} · {flagCounts[f]}
+              </button>
+            );
+          })}
+          {(cfg.flags ?? []).length > 0 && (
+            <button type="button" onClick={() => setCfg({ flags: [] })} className="text-muted underline hover:text-text">all</button>
+          )}
         </div>
       )}
 
@@ -324,7 +393,7 @@ export default function TopPage() {
           <TopView
             mode="standard"
             cfg={settings.top}
-            setCfg={(p) => update({ top: { ...settings.top, ...p } })}
+            setCfg={({ sort, ...p }) => update({ top: { ...settings.top, ...p, ...(sort && sort !== "reward" ? { sort } : {}) } })}
             baseCapital={baseCapital}
             capitalHint={capitalHint}
             capitalOverride={capitalOverride}
@@ -335,7 +404,7 @@ export default function TopPage() {
           <TopView
             mode="highValue"
             cfg={settings.highValue}
-            setCfg={(p) => update({ highValue: { ...settings.highValue, ...p, minProfit: p.minProfit ?? settings.highValue.minProfit } })}
+            setCfg={({ sort, ...p }) => update({ highValue: { ...settings.highValue, ...p, ...(sort && sort !== "reward" ? { sort } : {}), minProfit: p.minProfit ?? settings.highValue.minProfit } })}
             baseCapital={baseCapital}
             capitalHint={capitalHint}
             capitalOverride={capitalOverride}

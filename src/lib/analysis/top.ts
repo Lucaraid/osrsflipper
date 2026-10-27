@@ -1,5 +1,7 @@
 import { historyExclusion, type HistoryFlag } from "./history-check";
 import type { FlipCandidate } from "./scanner";
+import { breakEvenSellPrice } from "../calc/profit";
+import { netSellPerItem } from "../tax/tax";
 
 /**
  * „Top 10 Käufe“: die besten aktuellen Flip-Kandidaten unter der Bedingung, dass in den letzten
@@ -26,7 +28,8 @@ import type { FlipCandidate } from "./scanner";
 export interface TopOptions {
   minVolume24h: number;
   minCoverage: number;
-  sort: "score" | "profit" | "roi";
+  /** "reward": Gewinn ÷ geschätztes Verlustrisiko (nur sinnvoll mit history "only") */
+  sort: "score" | "profit" | "roi" | "reward";
   /** Mindestgewinn pro Trade (konservativ, nach Steuer); Standard 0 */
   minProfit?: number;
   /** Items, die ausgeschlossen werden (z. B. bereits gehalten) */
@@ -51,6 +54,43 @@ export interface TopPick {
   coverage: number;
   /** Ausschlussgrund aus dem 30-Tage-Abgleich (nur bei history "only" gesetzt) */
   flag: HistoryFlag | null;
+  /** Geschätzter Verlust, wenn sich der Preis gegen einen bewegt (nur bei markierten Items; null = nicht schätzbar) */
+  downside: Downside | null;
+}
+
+export interface Downside {
+  /** angenommener Verkaufspreis im ungünstigen Fall */
+  sellPrice: number;
+  /** Verlust pro Stück nach Steuer (0 = auch dann kein Verlust) */
+  perItem: number;
+  total: number;
+  /** welches Szenario den tiefsten Preis ergibt */
+  scenario: "fallback" | "trend" | "swing";
+}
+
+/**
+ * Ungünstiger Fall für markierte Items (Schätzung, keine Prognose). Ausgangspunkt ist der realistische
+ * Verkaufspreis zur konservativen Marge (Kauf + Marge + Steuer), nicht der letzte Instant-Buy:
+ *  - Preisspitze: Rückfall auf das 7-Tage-Niveau (Verkaufspreis ÷ (1 + Abweichung))
+ *  - Absturz: ein weiterer Tag im 7-Tage-Trend
+ *  - sprunghaft: eine typische Tagesbewegung (1 × tägliche Schwankung) nach unten
+ * Bei mehreren Gründen zählt der tiefste Preis. Ohne Historie (thin) keine Schätzung.
+ */
+export function downsideEstimate(c: FlipCandidate, qty: number, margin: number): Downside | null {
+  const hc = c.histCheck;
+  const h = c.hist;
+  if (!hc || !h || hc.thin || c.estBuy == null || c.estSell == null) return null;
+  // kleinster Verkaufspreis, der nach Steuer Kauf + Marge ergibt
+  const sell = Math.min(c.estSell, breakEvenSellPrice(c.estBuy + margin, c.id) ?? c.estSell);
+  const options: Array<[Downside["scenario"], number]> = [];
+  if ((hc.spike || (hc.recurringSpikes && hc.elevated)) && hc.deviation != null && hc.deviation > 0) options.push(["fallback", sell / (1 + hc.deviation)]);
+  if (hc.crash && h.trend7 != null) options.push(["trend", sell * Math.exp(h.trend7)]);
+  if (hc.erratic && h.dailyVol != null) options.push(["swing", sell * Math.exp(-h.dailyVol)]);
+  if (!options.length) return null;
+  const [scenario, raw] = options.reduce((a, b) => (b[1] < a[1] ? b : a));
+  const sellPrice = Math.max(1, Math.floor(raw));
+  const perItem = Math.max(0, c.estBuy - netSellPerItem(sellPrice, c.id));
+  return { sellPrice, perItem, total: perItem * qty, scenario };
 }
 
 export interface TopResult {
@@ -90,9 +130,13 @@ export function topBuys(cands: FlipCandidate[], o: TopOptions): TopResult {
       volumeWeaker: weaker,
       coverage: weaker / qty,
       flag,
+      downside: flag ? downsideEstimate(c, qty, margin) : null,
     });
   }
-  const key = (p: TopPick) => (o.sort === "profit" ? p.profit : o.sort === "roi" ? p.roi : p.c.score);
+  const key = (p: TopPick) => {
+    if (o.sort === "reward") return p.downside ? p.profit / Math.max(1, p.downside.total) : -1;
+    return o.sort === "profit" ? p.profit : o.sort === "roi" ? p.roi : p.c.score;
+  };
   picks.sort((a, b) => key(b) - key(a) || b.profit - a.profit || a.c.id - b.c.id);
   return { picks: picks.slice(0, o.limit ?? 10), considered: cands.length, excluded: ex };
 }

@@ -319,4 +319,9 @@ test("30-Tage-Abgleich: Grundlinie geladen, Preisspitze markiert, Top 10 zeigt 3
   await page.getByTestId("tab-volatile").click();
   const coal = page.getByTestId("vol-list").getByTestId("top-pick").filter({ hasText: "Coal" });
   await expect(coal.getByTestId("vol-flag")).toContainText("Erratic");
+  await expect(coal.getByTestId("vol-downside")).toContainText("typical daily swing");
+  // Filter nach Grund
+  await page.getByTestId("vol-flag-erratic").click();
+  await expect(page.getByTestId("vol-flag-erratic")).toHaveAttribute("aria-pressed", "true");
+  await expect(coal).toBeVisible();
 });

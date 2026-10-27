@@ -3,7 +3,7 @@ import { taxPerItem } from "../tax/tax";
 import type { ItemMeta, MarketRow, MonthAgg } from "../market/types";
 import type { ScannerFilters, SortKey } from "../storage/settings-schema";
 import { categorize, type Category } from "./category";
-import { checkHistory, type HistoryCheck } from "./history-check";
+import { checkHistory, historyExclusion, type HistoryCheck } from "./history-check";
 import { assessQuality, type QualityResult, type QualityThresholds } from "./quality";
 import { assessRisk, RISK_ORDER, type RiskResult } from "./risk";
 
@@ -141,7 +141,7 @@ export function buildCandidate(meta: ItemMeta, row: MarketRow, ctx: ScannerConte
   const volWeakerTypical = histCheck ? histCheck.volWeakerTypical : vol24hWeaker;
 
   const plannedQty = qty > 0 ? qty : (meta.limit ?? 1);
-  const risk = assessRisk(row, plannedQty, quality.score, histCheck ? { volWeaker: volWeakerTypical, dailyVol: hist?.dailyVol ?? null } : undefined);
+  const risk = assessRisk(row, plannedQty, quality.score, histCheck ? { volWeaker: volWeakerTypical, dailyVol: hist?.dailyVol ?? null, flagged: historyExclusion(histCheck) != null } : undefined);
 
   const c: FlipCandidate = {
     id: meta.id,

@@ -83,10 +83,12 @@ export const SettingsSchema = z.object({
       minVolume24h: z.number().int().nonnegative().max(1e9).default(500),
       minCoverage: z.number().min(0).max(1000).default(10),
       capitalPerFlip: z.number().positive().max(1e13).nullable().default(null),
-      sort: z.enum(["score", "profit", "roi"]).default("profit"),
+      sort: z.enum(["score", "profit", "roi", "reward"]).default("reward"),
       hideHeld: z.boolean().default(false),
+      /** angezeigte Gründe; leer = alle */
+      flags: z.array(z.enum(["thin", "crash", "erratic", "spike"])).default([]),
     })
-    .default({ minVolume24h: 500, minCoverage: 10, capitalPerFlip: null, sort: "profit", hideHeld: false }),
+    .default({ minVolume24h: 500, minCoverage: 10, capitalPerFlip: null, sort: "reward", hideHeld: false, flags: [] }),
   notificationsEnabled: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof SettingsSchema>;

@@ -9,6 +9,9 @@ import type { MarketRow } from "../market/types";
  * | Liquidität   | 30  | Volumen der schwächeren Seite (min. aus 24 h und normalem Tag der letzten 30 d) ÷ geplante Stückzahl; ≥ 5× → 0, ≤ 0,5× → 30; unbekannt → 30 |
  * | Spread       | 20  | (Instant-Buy − Instant-Sell) ÷ Instant-Sell; ≤ 1 % → 0, ≥ 10 % → 20                |
  * | Datenqualität| 20  | (100 − Qualitätsscore) × 0,2                                                       |
+ *
+ * Schliesst der 30-Tage-Abgleich das Item aus den Top 10 aus (Spitze, Absturz, sprunghaft, wenig Historie),
+ * ist die Risikoklasse mindestens „hoch“ – unabhängig vom Score.
  */
 
 export type RiskClass = "niedrig" | "mittel" | "hoch";
@@ -19,6 +22,8 @@ export interface RiskResult {
   components: { volatility: number; liquidity: number; spread: number; data: number };
   /** Abdeckung: Volumen der schwächeren Seite (24 h bzw. normaler Tag) / geplante Menge */
   coverage: number | null;
+  /** Klasse wegen des 30-Tage-Abgleichs auf „hoch“ angehoben */
+  raisedByHistory: boolean;
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -34,6 +39,8 @@ export interface RiskHistory {
   volWeaker: number | null;
   /** Tägliche Schwankung über 30 Tage */
   dailyVol: number | null;
+  /** vom 30-Tage-Abgleich ausgeschlossen */
+  flagged?: boolean;
 }
 
 export function assessRisk(row: MarketRow, plannedQty: number, qualityScore: number, hist?: RiskHistory): RiskResult {
@@ -60,5 +67,7 @@ export function assessRisk(row: MarketRow, plannedQty: number, qualityScore: num
 
   const data = (100 - Math.max(0, Math.min(100, qualityScore))) * 0.2;
   const score = Math.round(volatility + liquidity + spread + data);
-  return { score, riskClass: riskClass(score), components: { volatility, liquidity, spread, data }, coverage };
+  const cls = riskClass(score);
+  const raisedByHistory = !!hist?.flagged && cls !== "hoch";
+  return { score, riskClass: raisedByHistory ? "hoch" : cls, components: { volatility, liquidity, spread, data }, coverage, raisedByHistory };
 }
