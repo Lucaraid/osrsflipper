@@ -245,6 +245,10 @@ test("Top 10 Käufe: Empfehlungen mit Volumen-Kriterium und Kaufangebot erfassen
   await expect(page.getByText(/Buy offer for .* logged/)).toBeVisible();
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Flip History" }).click();
   await expect(page.getByTestId("trade-row")).toHaveCount(1);
+  // leerer Flip mit offenem Angebot: nichts investiert, aber Geld im GE gebunden
+  await expect(page.getByTestId("invested-open")).toContainText("0 open flips");
+  await expect(page.getByTestId("pending-offers")).toContainText("Not bought yet");
+  await expect(page.getByTestId("pending-offers").locator(".num").first()).not.toHaveText("0");
 });
 
 test("Top 10 High Value: Mindestgewinn pro Trade", async ({ page }) => {

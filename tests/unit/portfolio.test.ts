@@ -88,7 +88,21 @@ describe("Investiert in offenen Flips", () => {
     // 5 × 1200 (restliche Charge b) + 3 × 2000
     expect(r.invested).toBe(12_000);
     expect(r.openFlips).toBe(2);
-    expect(investedInOpenFlips([])).toEqual({ invested: 0, openFlips: 0 });
+    expect(r.pending).toBe(0);
+    expect(r.total).toBe(12_000);
+    expect(investedInOpenFlips([])).toEqual({ invested: 0, openFlips: 0, pending: 0, pendingFlips: 0, total: 0 });
+  });
+
+  it("offene Kaufangebote (auch leere Flips) zählen als „not bought yet“ und zum GE-Total", () => {
+    const empty = trade({ id: "e", lots: [], sales: [], offers: [{ id: "o1", date: T0, quantity: 100, price: 250 }] });
+    const mixed = trade({ id: "m", lots: [{ id: "m1", date: T0, quantity: 2, price: 1_000, fees: 0 }], sales: [], offers: [{ id: "o2", date: T0, quantity: 3, price: 900 }] });
+    const r = investedInOpenFlips([empty, mixed].map(computeFifo));
+    expect(r.invested).toBe(2_000);
+    expect(r.openFlips).toBe(1);
+    // 100 × 250 + 3 × 900
+    expect(r.pending).toBe(27_700);
+    expect(r.pendingFlips).toBe(2);
+    expect(r.total).toBe(29_700);
   });
 });
 

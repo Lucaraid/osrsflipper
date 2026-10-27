@@ -101,13 +101,21 @@ export default function HistoryPage() {
         </div>
       ) : null}
 
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="col-span-2 sm:col-span-1" data-testid="invested-open">
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div data-testid="invested-open">
           <Stat
             label="Invested in open flips"
             value={<Gp value={invested.invested} />}
             sub={`${invested.openFlips} open flip${invested.openFlips === 1 ? "" : "s"}`}
             hint="FIFO cost of all items you still hold (buy price × open quantity), regardless of filters"
+          />
+        </div>
+        <div data-testid="pending-offers">
+          <Stat
+            label="Not bought yet"
+            value={<Gp value={invested.pending} />}
+            sub={<>In GE total: <Gp value={invested.total} /></>}
+            hint={`Open buy offers that haven't filled yet (bid × quantity) across ${invested.pendingFlips} flip${invested.pendingFlips === 1 ? "" : "s"}, including empty flips. “In GE total” = invested in open flips + not bought yet.`}
           />
         </div>
         <Stat label="Trades (filtered)" value={totals.count} />
