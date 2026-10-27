@@ -34,6 +34,11 @@
   --chart-grid: #d6c8a8;
   --shadow: 0 1px 0 rgba(255, 250, 235, 0.6) inset, 0 2px 6px rgba(74, 52, 22, 0.14);
   --header-bg: rgba(200, 178, 140, 0.88);
+  /* Wordle-Felder des Anfrage-Limiters */
+  --tile-hit: #3a8a36;
+  --tile-present: #c49a1a;
+  --tile-miss: #b3352b;
+  --tile-fg: #fffaf0;
   color-scheme: light;
 }
 
@@ -64,6 +69,10 @@
   --chart-grid: #362b21;
   --shadow: 0 1px 0 rgba(255, 230, 190, 0.05) inset, 0 2px 8px rgba(0, 0, 0, 0.35);
   --header-bg: rgba(29, 23, 18, 0.88);
+  --tile-hit: #3f8f3b;
+  --tile-present: #b8901a;
+  --tile-miss: #a8402f;
+  --tile-fg: #fffaf0;
   color-scheme: dark;
 }
 
@@ -91,6 +100,10 @@
   --color-info-soft: var(--info-soft);
   --color-violet: var(--violet);
   --color-violet-soft: var(--violet-soft);
+  --color-tile-hit: var(--tile-hit);
+  --color-tile-present: var(--tile-present);
+  --color-tile-miss: var(--tile-miss);
+  --color-tile-fg: var(--tile-fg);
   --shadow-card: var(--shadow);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;

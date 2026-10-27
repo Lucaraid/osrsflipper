@@ -78,6 +78,13 @@ export const SettingsSchema = z.object({
     })
     .default({ minProfit: 2_000_000, capitalPerFlip: null, minVolume24h: 20, minCoverage: 3, sort: "profit", hideHeld: false }),
   notificationsEnabled: z.boolean().default(false),
+  /** Anfrage-Limiter: nach x Anfragen an die eigenen Markt-API-Routen muss ein Wordle gelöst werden */
+  requestLimiter: z
+    .object({
+      enabled: z.boolean().default(true),
+      requestsPerPuzzle: z.number().int().min(5).max(1000).default(30),
+    })
+    .default({ enabled: true, requestsPerPuzzle: 30 }),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 

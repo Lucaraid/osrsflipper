@@ -4,10 +4,12 @@ import { useMemo } from "react";
 import type { ItemMeta, ItemsResponse, Lookback, MarketRow, MarketSnapshot, TimeseriesResponse } from "@/lib/market/types";
 import { buildIndex } from "@/lib/search/search";
 import { buildCandidates, type FlipCandidate } from "@/lib/analysis/scanner";
+import { acquireRequest } from "@/state/limiter";
 import { useSettings } from "@/state/settings";
 import { useNow } from "./use-now";
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+  await acquireRequest(signal);
   const res = await fetch(url, { signal });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
