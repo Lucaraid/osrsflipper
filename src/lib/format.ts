@@ -5,10 +5,26 @@ const pctFmt = new Intl.NumberFormat("de-CH", { style: "percent", minimumFractio
 
 export const NA = "Not available";
 
-export function gp(v: number | null | undefined, opts: { sign?: boolean } = {}): string {
+/**
+ * Volle Zahl; ab 10M zusätzlich die gerundete Kurzform in Klammern:
+ * „23'456'789 (23.5M)“ (auf 100k gerundet), ab 1B „5'312'345'678 (5.31B)“ (auf 10M gerundet).
+ */
+export function gp(v: number | null | undefined, opts: { sign?: boolean; compact?: boolean } = {}): string {
   if (v == null || !Number.isFinite(v)) return NA;
   const s = intFmt.format(Math.round(v));
-  return opts.sign && v > 0 ? `+${s}` : s;
+  const full = opts.sign && v > 0 ? `+${s}` : s;
+  const c = opts.compact === false ? null : gpCompact(v);
+  return c ? `${full} (${c})` : full;
+}
+
+/** Gerundete Kurzform für grosse Beträge: ≥ 10M → 1 Nachkommastelle in M, ≥ 1B → 2 Nachkommastellen in B; darunter null */
+export function gpCompact(v: number | null | undefined): string | null {
+  if (v == null || !Number.isFinite(v)) return null;
+  const abs = Math.abs(v);
+  const sign = v < 0 ? "-" : "";
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e7) return `${sign}${(abs / 1e6).toFixed(1)}M`;
+  return null;
 }
 
 /** Kompakte Darstellung: 1.2K, 3.45M, 1.1B */

@@ -48,7 +48,7 @@ export default function PortfolioPage() {
     if (target == null) return;
     const diff = target - p.cash;
     if (diff === 0) return;
-    await addCapital({ id: newId(), date: Date.now(), amount: Math.round(diff), kind: "adjustment", note: `Cash set to ${gp(target)} gp` });
+    await addCapital({ id: newId(), date: Date.now(), amount: Math.round(diff), kind: "adjustment", note: `Cash set to ${gp(target, { compact: false })} gp` });
     setTarget(null);
     toast("Cash adjusted.", "pos");
   };

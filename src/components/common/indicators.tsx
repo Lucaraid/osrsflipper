@@ -3,7 +3,7 @@ import { Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tip } from "@/components/ui/tooltip";
-import { ago, gp, gpShort, NA, pct } from "@/lib/format";
+import { ago, gp, gpCompact, gpShort, NA, pct } from "@/lib/format";
 import type { QualityResult } from "@/lib/analysis/quality";
 import type { RiskResult } from "@/lib/analysis/risk";
 import { cn } from "@/lib/utils";
@@ -22,11 +22,13 @@ export function Est({ className }: { className?: string }) {
 }
 
 export function Gp({ value, short, sign, colored, className }: { value: number | null | undefined; short?: boolean; sign?: boolean; colored?: boolean; className?: string }) {
-  const text = short ? gpShort(value, { sign }) : gp(value, { sign });
+  const text = short ? gpShort(value, { sign }) : gp(value, { sign, compact: false });
+  const compact = short ? null : gpCompact(value);
   const tone = colored && value != null ? (value > 0 ? "text-pos" : value < 0 ? "text-neg" : "") : "";
   return (
-    <span className={cn("num", value == null && "text-faint", tone, className)} title={value != null && short ? `${gp(value)} gp` : undefined}>
+    <span className={cn("num", value == null && "text-faint", tone, className)} title={value != null && short ? `${gp(value, { compact: false })} gp` : undefined}>
       {text}
+      {compact && <span className="ml-1 text-[0.85em] font-normal text-muted">({compact})</span>}
     </span>
   );
 }
