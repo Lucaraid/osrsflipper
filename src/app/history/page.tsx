@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, HandCoins, Pencil, Plus, Trash2 } from "luci
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import { Confirm } from "@/components/common/confirm";
-import { EmptyState, Gp, PageHeader, Pct, Stat } from "@/components/common/indicators";
+import { EmptyState, Est, Gp, PageHeader, Pct, Stat } from "@/components/common/indicators";
 import { ItemIcon } from "@/components/common/item-icon";
 import { emptyTrade, TradeEditor, tradeWithSale } from "@/components/trades/trade-editor";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { breakEvenSellPrice, minProfitableSellPrice } from "@/lib/calc/profit";
 import { useItemMap, useRowMap } from "@/hooks/market";
 import { useSettings } from "@/state/settings";
-import { computeFifo, investedInOpenFlips, type TradeStatus, type TradeSummary } from "@/lib/portfolio/fifo";
+import { computeFifo, estimateOpenSale, investedInOpenFlips, recommendedSellPrice, type TradeStatus, type TradeSummary } from "@/lib/portfolio/fifo";
 import { cn } from "@/lib/utils";
 import type { Trade } from "@/lib/portfolio/schemas";
 import { dateTime, duration, gp, gpShort } from "@/lib/format";
@@ -47,6 +47,31 @@ function MinSell({ s, instantBuy }: { s: TradeSummary; instantBuy: number | null
   );
 }
 
+/** Empfohlener Verkaufspreis (Schätzung aus letztem Instant-Buy) mit geschätztem Gewinn für die offenen Stücke */
+function SellAt({ s, instantBuy, offset }: { s: TradeSummary; instantBuy: number | null; offset: number }) {
+  const price = s.openQty > 0 ? recommendedSellPrice(instantBuy, offset) : null;
+  if (price == null) return <span className="text-faint">–</span>;
+  const est = estimateOpenSale(s, price);
+  const min = minProfitableSellPrice(s.openCostBasis / s.openQty, s.itemId);
+  return (
+    <Tip
+      content={
+        <div className="space-y-0.5">
+          <div>Last instant-buy {gp(instantBuy)} gp − {gp(offset)} gp undercut</div>
+          {est && (
+            <div className={est.profit > 0 ? "text-pos" : est.profit < 0 ? "text-neg" : ""}>
+              Selling your {s.openQty} open items here: est. {est.profit >= 0 ? "profit" : "loss"} {gp(Math.abs(est.profit))} gp after {gp(est.tax)} gp tax
+            </div>
+          )}
+          <div className="text-muted">Estimate from the last observed price – not guaranteed to fill.</div>
+        </div>
+      }
+    >
+      <span className={cn("num cursor-help font-medium", min != null && (price >= min ? "text-pos" : "text-neg"))}>{gp(price)}</span>
+    </Tip>
+  );
+}
+
 export default function HistoryPage() {
   const { trades, loaded, error, deleteTrade } = useDataStore();
   const items = useItemMap();
@@ -56,7 +81,7 @@ export default function HistoryPage() {
   /** Verkauf für einen offenen Trade: Menge = offene Stück, Preis = letzter Instant-Buy − Offset (Schätzung) */
   const startSale = (t: Trade) => {
     const r = marketRows.get(t.itemId);
-    const price = r?.high != null ? Math.max(1, r.high - settings.priceOffset) : null;
+    const price = recommendedSellPrice(r?.high, settings.priceOffset);
     setEditing({ draft: tradeWithSale(t, price), mode: "sell" });
   };
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -190,6 +215,11 @@ export default function HistoryPage() {
                   <th className="px-2 py-2 text-right font-medium">Bought / sold / open</th>
                   <th className="px-2 py-2 text-right font-medium">Avg buy</th>
                   <th className="px-2 py-2 text-right font-medium">
+                    <Tip content="Recommended sell price per item right now: last instant-buy minus your undercut (Settings). Green = above your min sell, red = you would not make a profit">
+                      <span className="cursor-help border-b border-dotted border-faint">Sell at<Est /></span>
+                    </Tip>
+                  </th>
+                  <th className="px-2 py-2 text-right font-medium">
                     <Tip content="Lowest sell price per item that still makes a profit after 2% GE tax, based on what you paid for the items you still hold (FIFO)">
                       <span className="cursor-help border-b border-dotted border-faint">Min sell</span>
                     </Tip>
@@ -222,6 +252,7 @@ export default function HistoryPage() {
                         <td className="px-2 py-1.5"><Badge tone={STATUS_TONE[s.status]}>{STATUS_LABEL[s.status]}</Badge></td>
                         <td className="px-2 py-1.5 text-right num">{s.boughtQty} / {s.soldQty} / {s.openQty}</td>
                         <td className="px-2 py-1.5 text-right"><Gp value={s.avgBuyPrice} /></td>
+                        <td className="px-2 py-1.5 text-right" data-testid="trade-sell-at"><SellAt s={s} instantBuy={marketRows.get(t.itemId)?.high ?? null} offset={settings.priceOffset} /></td>
                         <td className="px-2 py-1.5 text-right" data-testid="trade-min-sell"><MinSell s={s} instantBuy={marketRows.get(t.itemId)?.high ?? null} /></td>
                         <td className="hidden px-2 py-1.5 text-right sm:table-cell"><Gp value={s.proceedsNet} short /></td>
                         <td className="px-2 py-1.5 text-right font-medium" data-testid="trade-realized"><Gp value={s.realized} colored /></td>
@@ -255,7 +286,7 @@ export default function HistoryPage() {
                       </tr>
                       {open && (
                         <tr className="border-b border-border bg-surface-2/40">
-                          <td colSpan={11} className="px-4 py-3">
+                          <td colSpan={12} className="px-4 py-3">
                             <div className="grid gap-4 text-xs lg:grid-cols-3">
                               <div>
                                 <div className="mb-1 font-semibold text-muted">Buys</div>

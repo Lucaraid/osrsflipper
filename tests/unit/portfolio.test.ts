@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeFifo, investedInOpenFlips, validateTrade } from "@/lib/portfolio/fifo";
+import { computeFifo, estimateOpenSale, investedInOpenFlips, recommendedSellPrice, validateTrade } from "@/lib/portfolio/fifo";
 import { checkPositionRules, computePortfolio, computeTimeline } from "@/lib/portfolio/portfolio";
 import type { CapitalEvent, Trade } from "@/lib/portfolio/schemas";
 
@@ -103,6 +103,29 @@ describe("Investiert in offenen Flips", () => {
     expect(r.pending).toBe(27_700);
     expect(r.pendingFlips).toBe(2);
     expect(r.total).toBe(29_700);
+  });
+});
+
+describe("Empfohlener Verkaufspreis", () => {
+  it("letzter Instant-Buy minus Offset, nie unter 1 gp, ohne Preis null", () => {
+    expect(recommendedSellPrice(1_100, 1)).toBe(1_099);
+    expect(recommendedSellPrice(1, 5)).toBe(1);
+    expect(recommendedSellPrice(null, 1)).toBeNull();
+  });
+  it("geschätzter Gewinn für die offenen Stücke nach Steuer (FIFO-Einstand)", () => {
+    const t = trade({
+      lots: [
+        { id: "a", date: T0, quantity: 10, price: 1_000, fees: 0 },
+        { id: "b", date: T0 + H, quantity: 10, price: 1_200, fees: 0 },
+      ],
+      sales: [{ id: "s1", date: T0 + 2 * H, quantity: 15, price: 1_500, tax: null, fees: 0 }],
+    });
+    const s = computeFifo(t);
+    // offen: 5 × 1200 = 6000; Verkauf 5 × 1300 = 6500 − 5 × 26 Steuer = 6370 → +370
+    expect(estimateOpenSale(s, 1_300)).toEqual({ profit: 370, tax: 130 });
+    // geschlossener Trade → null
+    const closed = computeFifo(trade({ lots: [{ id: "c", date: T0, quantity: 1, price: 100, fees: 0 }], sales: [{ id: "d", date: T0 + H, quantity: 1, price: 120, tax: null, fees: 0 }] }));
+    expect(estimateOpenSale(closed, 200)).toBeNull();
   });
 });
 

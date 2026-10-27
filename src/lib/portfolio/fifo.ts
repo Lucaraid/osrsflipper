@@ -192,6 +192,18 @@ export function investedInOpenFlips(summaries: TradeSummary[]): { invested: numb
   return { invested, openFlips: open.length, pending, pendingFlips: withOffers.length, total: invested + pending };
 }
 
+/** Empfohlener (geschätzter) Verkaufspreis: letzter Instant-Buy − Unterbieten, mindestens 1 gp */
+export function recommendedSellPrice(instantBuy: number | null | undefined, offset: number): number | null {
+  return instantBuy != null && instantBuy > 0 ? Math.max(1, instantBuy - offset) : null;
+}
+
+/** Geschätzter Gewinn, wenn alle noch offenen Stücke zum Preis `sellPrice` verkauft werden (nach GE-Steuer, FIFO-Einstand) */
+export function estimateOpenSale(s: TradeSummary, sellPrice: number): { profit: number; tax: number } | null {
+  if (s.openQty <= 0 || !Number.isFinite(sellPrice) || sellPrice < 1) return null;
+  const tax = taxTotal(sellPrice, s.openQty, s.itemId);
+  return { profit: Math.round(sellPrice * s.openQty - tax - s.openCostBasis), tax };
+}
+
 export function validateTrade(trade: Trade): string[] {
   return computeFifo(trade).errors;
 }
