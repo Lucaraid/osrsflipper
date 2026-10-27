@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { breakEvenSellPrice, calculateFlip, maxBuyPriceForProfit, maxQuantity, MAX_GE_PRICE } from "@/lib/calc/profit";
+import { breakEvenSellPrice, calculateFlip, maxBuyPriceForProfit, maxQuantity, MAX_GE_PRICE, minProfitableSellPrice } from "@/lib/calc/profit";
 
 describe("calculateFlip", () => {
   it("profitabler Trade", () => {
@@ -91,6 +91,21 @@ describe("calculateFlip", () => {
     expect(r.taxIsActual).toBe(true);
     expect(r.capitalRequired).toBe(10_050);
     expect(r.netProfit).toBe(11_000 - 100 - 10_050);
+  });
+});
+
+describe("minProfitableSellPrice", () => {
+  it("kleinster Preis mit Gewinn > 0 nach Steuer", () => {
+    // 1020 − 20 = 1000 (Break-even), 1021 − 20 = 1001 → erster Preis mit Gewinn
+    expect(breakEvenSellPrice(1_000)).toBe(1_020);
+    expect(minProfitableSellPrice(1_000)).toBe(1_021);
+    // gebrochener Einstand: 1000.5 → Netto muss ≥ 1001 sein
+    expect(minProfitableSellPrice(1_000.5)).toBe(1_021);
+    // steuerfreies Item (Old school bond): einfach Einstand + 1
+    expect(minProfitableSellPrice(10_000_000, 13190)).toBe(10_000_001);
+    // Steuerdeckel 5M/Stück greift bei sehr teuren Items
+    expect(minProfitableSellPrice(1_000_000_000)).toBe(1_005_000_001);
+    expect(minProfitableSellPrice(Number.NaN)).toBeNull();
   });
 });
 

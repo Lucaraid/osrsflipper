@@ -147,6 +147,15 @@ export function breakEvenSellPrice(costPerItem: number, itemId?: number | null, 
 }
 
 /**
+ * Kleinster ganzzahliger Verkaufspreis, bei dem nach GE-Steuer noch Gewinn (> 0) übrig bleibt.
+ * Netto-Erlös ist ganzzahlig, daher: netSell > costPerItem ⇔ netSell ≥ ⌊costPerItem⌋ + 1.
+ */
+export function minProfitableSellPrice(costPerItem: number, itemId?: number | null, rules: TaxRules = TAX_RULES): number | null {
+  if (!Number.isFinite(costPerItem)) return null;
+  return breakEvenSellPrice(Math.max(0, Math.floor(costPerItem)) + 1, itemId, rules);
+}
+
+/**
  * Höchster ganzzahliger Kaufpreis pro Stück, um bei gegebenem Verkaufspreis
  * mindestens `targetProfitPerItem` netto pro Stück zu erzielen.
  * null, wenn kein positiver Kaufpreis das Ziel erreicht.

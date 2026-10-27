@@ -119,6 +119,8 @@ test("7.–9. Trade erstellen, Teilverkauf erfassen, realisierten Gewinn prüfen
   await expect(page.getByTestId("trade-row")).toContainText("open");
   // 10 × 1000 gp offen investiert
   await expect(page.getByTestId("invested-open")).toContainText(/10.000/);
+  // Einstand 1000 → mit Gewinn ab 1021 (1021 − 20 Steuer = 1001)
+  await expect(page.getByTestId("trade-min-sell")).toHaveText(/^1.021$/);
   await page.getByTestId("edit-trade").click();
   await page.getByTestId("add-sale").click();
   await page.getByTestId("sale-qty").fill("4");

@@ -10,17 +10,42 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
+import { Tip } from "@/components/ui/tooltip";
+import { breakEvenSellPrice, minProfitableSellPrice } from "@/lib/calc/profit";
 import { useItemMap, useRowMap } from "@/hooks/market";
 import { useSettings } from "@/state/settings";
-import { computeFifo, investedInOpenFlips, type TradeStatus } from "@/lib/portfolio/fifo";
+import { computeFifo, investedInOpenFlips, type TradeStatus, type TradeSummary } from "@/lib/portfolio/fifo";
+import { cn } from "@/lib/utils";
 import type { Trade } from "@/lib/portfolio/schemas";
-import { dateTime, duration, gpShort } from "@/lib/format";
+import { dateTime, duration, gp, gpShort } from "@/lib/format";
 import { useDataStore } from "@/state/data";
 import { useFolderStore } from "@/state/folder";
 import { toast } from "@/state/toasts";
 
 const STATUS_TONE: Record<TradeStatus, "neutral" | "info" | "warn" | "pos"> = { leer: "neutral", offen: "info", teilweise: "warn", geschlossen: "pos" };
 const STATUS_LABEL: Record<TradeStatus, string> = { leer: "empty", offen: "open", teilweise: "partly sold", geschlossen: "closed" };
+
+/** Mindest-Verkaufspreis für Gewinn nach Steuer (nur bei noch gehaltenen Stücken) */
+function MinSell({ s, instantBuy }: { s: TradeSummary; instantBuy: number | null }) {
+  if (s.openQty <= 0) return <span className="text-faint">–</span>;
+  const cost = s.openCostBasis / s.openQty;
+  const min = minProfitableSellPrice(cost, s.itemId);
+  if (min == null) return <span className="text-faint">–</span>;
+  const reached = instantBuy != null && instantBuy >= min;
+  return (
+    <Tip
+      content={
+        <div className="space-y-0.5">
+          <div>Your cost: {gp(Math.round(cost))} gp per item ({s.openQty} open)</div>
+          <div>Break-even (no profit, no loss): {gp(breakEvenSellPrice(cost, s.itemId))} gp</div>
+          <div className="text-muted">Last instant-buy: {instantBuy != null ? `${gp(instantBuy)} gp` : "not available"}</div>
+        </div>
+      }
+    >
+      <span className={cn("num cursor-help font-medium", reached ? "text-pos" : "text-text")}>{gp(min)}</span>
+    </Tip>
+  );
+}
 
 export default function HistoryPage() {
   const { trades, loaded, error, deleteTrade } = useDataStore();
@@ -164,6 +189,11 @@ export default function HistoryPage() {
                   <th className="px-2 py-2 font-medium">Status</th>
                   <th className="px-2 py-2 text-right font-medium">Bought / sold / open</th>
                   <th className="px-2 py-2 text-right font-medium">Avg buy</th>
+                  <th className="px-2 py-2 text-right font-medium">
+                    <Tip content="Lowest sell price per item that still makes a profit after 2% GE tax, based on what you paid for the items you still hold (FIFO)">
+                      <span className="cursor-help border-b border-dotted border-faint">Min sell</span>
+                    </Tip>
+                  </th>
                   <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">Net proceeds</th>
                   <th className="px-2 py-2 text-right font-medium">Realised</th>
                   <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">ROI</th>
@@ -192,6 +222,7 @@ export default function HistoryPage() {
                         <td className="px-2 py-1.5"><Badge tone={STATUS_TONE[s.status]}>{STATUS_LABEL[s.status]}</Badge></td>
                         <td className="px-2 py-1.5 text-right num">{s.boughtQty} / {s.soldQty} / {s.openQty}</td>
                         <td className="px-2 py-1.5 text-right"><Gp value={s.avgBuyPrice} /></td>
+                        <td className="px-2 py-1.5 text-right" data-testid="trade-min-sell"><MinSell s={s} instantBuy={marketRows.get(t.itemId)?.high ?? null} /></td>
                         <td className="hidden px-2 py-1.5 text-right sm:table-cell"><Gp value={s.proceedsNet} short /></td>
                         <td className="px-2 py-1.5 text-right font-medium" data-testid="trade-realized"><Gp value={s.realized} colored /></td>
                         <td className="hidden px-2 py-1.5 text-right sm:table-cell"><Pct value={s.roi} /></td>
@@ -224,7 +255,7 @@ export default function HistoryPage() {
                       </tr>
                       {open && (
                         <tr className="border-b border-border bg-surface-2/40">
-                          <td colSpan={10} className="px-4 py-3">
+                          <td colSpan={11} className="px-4 py-3">
                             <div className="grid gap-4 text-xs lg:grid-cols-3">
                               <div>
                                 <div className="mb-1 font-semibold text-muted">Buys</div>
