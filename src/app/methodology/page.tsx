@@ -33,6 +33,7 @@ export default function MethodologyPage() {
         <li>Est. buy price = last instant-sell + offset; est. sell price = last instant-buy − offset (offset adjustable, default 1 gp).</li>
         <li>Net margin = sell − tax(sell) − buy. ROI = net margin ÷ buy.</li>
         <li>Quantity = min(⌊capital ÷ buy⌋, GE limit). Only known limits are used; if the limit is missing, “Not available” is shown.</li>
+        <li>Buy limit tracking: the GE limit applies for 4 hours from your first buy of an item. Buys you logged in that window plus open buy offers are subtracted from the limit, so the quantity never exceeds what you can still buy. Buys you didn’t log are unknown to the app.</li>
         <li>Profit @ capital = net margin × quantity. Potential per limit = net margin × limit (independent of capital).</li>
       </ul>
 

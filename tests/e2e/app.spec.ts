@@ -300,3 +300,19 @@ test("Flip-Historie: „Verkaufen“ bei offenem Trade füllt Menge vor", async 
   await expect(page.getByTestId("sale-qty").last()).toHaveValue("10");
   await expect(page.getByTestId("sale-price").last()).not.toHaveValue("");
 });
+
+test("Kauflimit-Tracker: Kauf erscheint auf Dashboard und Item-Seite mit Restlimit", async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByTestId("buy-limits-card")).toContainText("No buy limits in use");
+
+  await createTrade(page, false); // 10 × Abyssal whip (Limit 70), Kaufzeitpunkt = jetzt
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Dashboard" }).click();
+  const row = page.getByTestId("buy-limit-row");
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText("Abyssal whip");
+  await expect(row).toContainText("60 left");
+  await expect(row).toContainText(/10 \/ 70 used · resets in 4([.,]0)? h/);
+
+  await row.getByRole("link", { name: "Abyssal whip" }).click();
+  await expect(page.getByTestId("item-limit-usage")).toHaveText(/10 \/ 70 used · resets in/);
+});

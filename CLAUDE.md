@@ -69,7 +69,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict (`noUnchecke
 ## Bekannte Grenzen / Ideen
 
 - Items ohne bekanntes GE-Limit: Menge nur durch Kapital/Volumen begrenzt.
-- 4-h-Kauflimit wird nicht aus eigenen Käufen nachverfolgt (mögliche Erweiterung).
+- 4-h-Kauflimit wird nur aus **erfassten** Käufen/offenen Angeboten nachverfolgt (`src/lib/portfolio/buy-limit.ts`); nicht erfasste Käufe kennt die App nicht.
 - Siehe `docs/05-limitations.md`.
 
 ## Umgebung
