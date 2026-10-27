@@ -300,3 +300,18 @@ test("Flip-Historie: „Verkaufen“ bei offenem Trade füllt Menge vor", async 
   await expect(page.getByTestId("sale-qty").last()).toHaveValue("10");
   await expect(page.getByTestId("sale-price").last()).not.toHaveValue("");
 });
+
+test("30-Tage-Abgleich: Grundlinie geladen, Preisspitze markiert, Top 10 zeigt 30-Tage-Zeile", async ({ page, request }) => {
+  const res = await request.get("/api/history");
+  expect(res.status()).toBe(200);
+  const h = await res.json();
+  expect(h.meta.source).toBe("fixtures");
+  expect(h.meta.daysLoaded).toBe(30);
+  expect(h.items["4151"].days).toBe(30);
+  // Testitem 4151 hat in der letzten Stunde einen synthetischen Anstieg von 25 %
+  await openApp(page, "/items/4151");
+  await expect(page.getByTestId("item-history-check")).toContainText("Price spike");
+  await openApp(page, "/top");
+  await expect(page.getByTestId("top-pick").first().getByTestId("history-summary")).toContainText("30 d:");
+  await expect(page.getByTestId("top-list")).not.toContainText("Abyssal whip");
+});

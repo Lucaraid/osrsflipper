@@ -34,11 +34,11 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict (`noUnchecke
 
 ## Architektur (Kurzfassung)
 
-- `src/lib/market/` – Wiki-Client (UA, Timeout, Retry/Backoff, Semaphor), TtlCache (stale-on-error), Parser (Zod), 24h-Aggregation aus 24 × `/1h`, `MarketService` (Server-Singleton in `server.ts`), Rate-Limit, gzip-JSON.
-- `src/app/api/{items,market,timeseries,health}` – eigene API-Routen; Client holt nur von dort.
+- `src/lib/market/` – Wiki-Client (UA, Timeout, Retry/Backoff, Semaphor), TtlCache (stale-on-error), Parser (Zod), 24h-Aggregation aus 24 × `/1h`, **30-Tage-Grundlinie** aus 30 × `/24h?timestamp=` (`history.ts`), `MarketService` (Server-Singleton in `server.ts`), Rate-Limit, gzip-JSON.
+- `src/app/api/{items,market,history,timeseries,health}` – eigene API-Routen; Client holt nur von dort.
 - `src/lib/tax/` – **einzige** Stelle für GE-Steuer: 2 % pro Stück, abgerundet, max. 5M/Stück, 48 befreite Item-IDs (Stand 2026-10-24).
 - `src/lib/calc/profit.ts` – zentrale Flip-Berechnung (`calculateFlip`, Break-even, max. Kaufpreis, max. Menge).
-- `src/lib/analysis/` – Datenqualität, Risiko, Scanner + Ranking (inkl. **konservativer Marge** mit 1h-Ø-Preisen), Top-10 (`top.ts`), Indikatoren.
+- `src/lib/analysis/` – Datenqualität, Risiko, Scanner + Ranking (inkl. **konservativer Marge** mit 1h-Ø-Preisen), **30-Tage-Abgleich** (`history-check.ts`: Spitze, wiederkehrende Spitzen, Trend, Sprunghaftigkeit, Spread-Deckel, normales Volumen), Top-10 (`top.ts`), Indikatoren.
 - `src/lib/portfolio/` – Zod-Schemas, FIFO (`fifo.ts`), Portfolio ohne Doppelzählung, Zeitreihe.
 - `src/lib/storage/` – IndexedDB (v2, Store `meta` für Ordner-Handle), Settings (LocalStorage, Zod), Backup-Format, **Ordner-Speicherung** (`folder.ts`, File System Access API: `osrs-ge-flipper-daten.json` + `trades.csv`).
 - `src/state/` – Zustand-Stores: `data` (Trades etc.), `settings`, `folder`, `calc` (letzte Rechner-Werte je Item), `toasts`.
@@ -65,6 +65,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict (`noUnchecke
 7. **Design fröhlicher, Standard = helles Design in Pergament-Braun wie das OSRS Wiki** (dunkel = warmes Holz-Braun, Umschalter oben rechts). Farben nur über Tokens in `globals.css`. App vereinfacht: Marktanalyse, Preisalarme und Item-Explorer-Liste entfernt (Alarm-Daten bleiben im Speicher-/Backup-Format für Kompatibilität), Einstellungen ohne Datenaktualität/Positionsregeln, Dashboard mit 6 Kennzahlen.
 8. **Ganze App auf Englisch.** Interne Werte bleiben deutsch, damit gespeicherte Daten gültig bleiben (Trade-Status `offen/teilweise/geschlossen`, Risiko/Qualität `niedrig/mittel/hoch/unzureichend`, Dateiname `osrs-ge-flipper-daten.json`) – Anzeige über Label-Maps (`LEVEL_LABEL`, `STATUS_LABEL`). Code-Kommentare bleiben deutsch.
 9. **Kaufchargen ohne Gebühren-Feld** (gibt es im GE nicht); beim Verkauf bleibt das optionale Feld für die tatsächliche Steuer.
+10. **Scanner/Top 10 gegen die letzten 30 Tage absichern** (Items, die regelmässig ausschlagen oder fallen, sollen nicht als gute Flips erscheinen) → `docs/03-methodik.md` Abschnitt 6a.
 
 ## Bekannte Grenzen / Ideen
 

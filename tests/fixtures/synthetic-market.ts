@@ -103,6 +103,13 @@ export function fixture1h(nowMs: number, timestamp?: number) {
   return block(nowMs, timestamp ?? latestBlock, 3600);
 }
 
+/** Tagesblock (00:00–24:00 UTC) wie `/24h?timestamp=`; laufender Tag ist noch nicht verfügbar. */
+export function fixture24h(nowMs: number, timestamp: number) {
+  const now = Math.floor(nowMs / 1000);
+  if (timestamp % 86400 !== 0 || timestamp + 86400 > now) return { data: {} };
+  return block(nowMs, timestamp, 86400);
+}
+
 const LOOKBACK_STEPS: Record<string, [number, number]> = {
   "6h": [300, 72],
   "24h": [300, 288],

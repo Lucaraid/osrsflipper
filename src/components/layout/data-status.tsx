@@ -2,7 +2,7 @@
 import { AlertTriangle, FlaskConical, RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tip } from "@/components/ui/tooltip";
-import { useMarket } from "@/hooks/market";
+import { useHistory, useMarket } from "@/hooks/market";
 import { useNow } from "@/hooks/use-now";
 import { ago, dateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { useSettings } from "@/state/settings";
 
 export function DataStatus() {
   const { data, error, isFetching } = useMarket();
+  const history = useHistory();
   const qc = useQueryClient();
   const now = useNow(10_000);
   const s = useSettings();
@@ -29,6 +30,12 @@ export function DataStatus() {
               24h history: {data.meta.day.blocksLoaded}/{data.meta.day.blocksExpected} hourly blocks · 5-min block: {dateTime((data.meta.fiveMin.blockTimestamp ?? 0) * 1000)}
             </div>
           )}
+          {history.data && (
+            <div className="text-muted">
+              30-day history: {history.data.meta.daysLoaded}/{history.data.meta.daysExpected} days{history.data.meta.error ? ` · ${history.data.meta.error}` : ""}
+            </div>
+          )}
+          {history.error && !history.data && <div className="text-warn">30-day history unavailable: {history.error.message}</div>}
           {data?.meta.latest.error && <div className="text-warn">Last fetch failed: {data.meta.latest.error}</div>}
           {error && <div className="text-neg">{error.message}</div>}
           <div className="text-muted">Refreshes automatically every 60 s.</div>

@@ -1,3 +1,4 @@
+import { historyExclusion } from "./history-check";
 import type { FlipCandidate } from "./scanner";
 
 /**
@@ -5,14 +6,17 @@ import type { FlipCandidate } from "./scanner";
  * 24 Stunden genug gehandelt wurde.
  *
  * Volumen-Kriterien (beide müssen erfüllt sein, gemessen auf der SCHWÄCHEREN Seite, weil sowohl
- * der Kauf als auch der Verkauf gefüllt werden muss):
- *  1. 24h-Volumen ≥ minVolume24h Stück
- *  2. 24h-Volumen ≥ minCoverage × empfohlene Menge
+ * der Kauf als auch der Verkauf gefüllt werden muss). Ist die 30-Tage-Grundlinie geladen, zählt das
+ * kleinere aus 24h-Volumen und normalem Tagesvolumen (Median 30 d), damit ein einzelner Ausreisser-Tag
+ * keine zu grosse Menge erlaubt:
+ *  1. Volumen ≥ minVolume24h Stück
+ *  2. Volumen ≥ minCoverage × empfohlene Menge
  * Ist die nach Kapital/Limit mögliche Menge zu gross für Kriterium 2, wird die Menge reduziert
  * (auf ⌊24h-Volumen ÷ minCoverage⌋), statt das Item auszuschliessen.
  *
  * Weitere Voraussetzungen: positive Marge nach letzter Beobachtung UND mit Durchschnittspreisen,
- * Datenqualität ≥ 60, plausible Marge, keine veralteten Preise.
+ * Datenqualität ≥ 60, plausible Marge, keine veralteten Preise. Mit 30-Tage-Grundlinie zusätzlich ausgeschlossen:
+ * aktuelle Preisspitze, wiederkehrende Spitzen bei erhöhtem Preis, Absturz, sprunghafter Preis, < 14 Handelstage.
  * Gewinne werden konservativ gerechnet (kleinere der beiden Margen).
  */
 
@@ -45,20 +49,21 @@ export interface TopPick {
 export interface TopResult {
   picks: TopPick[];
   considered: number;
-  excluded: { noMargin: number; lowVolume: number; quality: number; stale: number; excluded: number; lowProfit: number };
+  excluded: { noMargin: number; lowVolume: number; quality: number; stale: number; excluded: number; lowProfit: number; history: number };
 }
 
 export const TOP_MIN_QUALITY = 60;
 
 export function topBuys(cands: FlipCandidate[], o: TopOptions): TopResult {
-  const ex = { noMargin: 0, lowVolume: 0, quality: 0, stale: 0, excluded: 0, lowProfit: 0 };
+  const ex = { noMargin: 0, lowVolume: 0, quality: 0, stale: 0, excluded: 0, lowProfit: 0, history: 0 };
   const picks: TopPick[] = [];
   for (const c of cands) {
     if (o.excludeIds?.has(c.id)) { ex.excluded++; continue; }
     if (c.netMargin == null || c.netMargin <= 0 || c.netMarginConservative == null || c.netMarginConservative <= 0 || c.estBuy == null || c.qty <= 0) { ex.noMargin++; continue; }
     if (c.quality.score < TOP_MIN_QUALITY || c.quality.components.plausibility < 10) { ex.quality++; continue; }
     if (c.quality.freshness <= 0) { ex.stale++; continue; }
-    const weaker = c.vol24hWeaker ?? 0;
+    if (historyExclusion(c.histCheck)) { ex.history++; continue; }
+    const weaker = c.volWeakerTypical ?? 0;
     if (weaker < o.minVolume24h || weaker <= 0) { ex.lowVolume++; continue; }
     const maxByVolume = o.minCoverage > 0 ? Math.floor(weaker / o.minCoverage) : Infinity;
     const qty = Math.min(c.qty, maxByVolume);

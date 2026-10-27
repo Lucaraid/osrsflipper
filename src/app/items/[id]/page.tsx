@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { TimeChart, type ChartSeries } from "@/components/charts/time-chart";
 import { Age, EmptyState, ErrorNote, Est, Gp, InfoNote, Pct, QualityBadge, RiskBadge, Skeleton, Stat } from "@/components/common/indicators";
+import { HistorySummary } from "@/components/common/history-check";
+import { historyReasons } from "@/lib/analysis/scanner";
+import { cn } from "@/lib/utils";
 import { ItemIcon } from "@/components/common/item-icon";
 import { WatchButton } from "@/components/common/watch-button";
 import { ProfitCalculator } from "@/components/items/profit-calculator";
@@ -148,6 +151,18 @@ export default function ItemDetailPage() {
           {cand && cand.quality.notes[0] && <div className="mt-1 truncate text-[11px] text-faint" title={cand.quality.notes.join(" ")}>{cand.quality.notes[0]}</div>}
         </div>
       </div>
+
+      {cand?.histCheck && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" data-testid="item-history-check">
+          <HistorySummary c={cand} className="text-muted" />
+          {historyReasons(cand).map((r) => (
+            <span key={r.text} className={cn(r.tone === "positive" ? "text-pos" : r.tone === "negative" ? "text-neg" : "text-muted")}>
+              {r.tone === "positive" ? "+ " : r.tone === "negative" ? "− " : "· "}
+              {r.text}
+            </span>
+          ))}
+        </div>
+      )}
 
       <Card>
         <CardHeader

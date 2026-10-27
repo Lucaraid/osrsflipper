@@ -3,6 +3,7 @@ import { Calculator, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Age, EmptyState, ErrorNote, Est, Gp, InfoNote, PageHeader, Pct, QualityBadge, RiskBadge, Skeleton } from "@/components/common/indicators";
+import { HistoryStatusNote, HistorySummary } from "@/components/common/history-check";
 import { ItemIcon } from "@/components/common/item-icon";
 import { WatchButton } from "@/components/common/watch-button";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +73,7 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
           <div className="num">
             {p.qty.toLocaleString("de-CH")}
             {p.qtyReducedByVolume && (
-              <Tip content={`Quantity reduced because of 24h volume (otherwise ${c.qty.toLocaleString("de-CH")}).`}>
+              <Tip content={`Quantity reduced because of trade volume – the smaller of the last 24 h and a normal day (otherwise ${c.qty.toLocaleString("de-CH")}).`}>
                 <span className="ml-1 cursor-help text-warn">↓</span>
               </Tip>
             )}
@@ -95,6 +96,9 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
           <div className="num" data-testid="top-volume">
             {gpShort(c.vol24h)} total · {gpShort(c.vol24hWeaker)} weaker side <span className="text-faint">· {p.coverage.toFixed(0)}× qty</span>
           </div>
+        </div>
+        <div className="col-span-2 text-[11px] text-muted sm:col-span-4">
+          <HistorySummary c={c} />
         </div>
       </div>
 
@@ -204,6 +208,8 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
         </div>
       )}
 
+      <div className="mb-3 empty:hidden"><HistoryStatusNote /></div>
+
       {market.data && market.data.meta.day.blocksLoaded < 24 && (
         <div className="mb-3"><InfoNote tone="warn">24h volume is still loading ({market.data.meta.day.blocksLoaded}/24 hours) – the list may still change.</InfoNote></div>
       )}
@@ -255,9 +261,10 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
       )}
 
       <p className="mt-3 text-[11px] text-faint">
-        Criteria: positive margin also with last hour’s average prices, data quality ≥ {TOP_MIN_QUALITY}, no stale prices, 24h volume on the weaker side ≥ {gp(cfg.minVolume24h)} items and ≥ {cfg.minCoverage}× quantity (otherwise the quantity is reduced)
+        Criteria: positive margin also with last hour’s average prices and the 30-day history (margin capped at 2× the normal daily spread, minus expected loss in a downtrend), data quality ≥ {TOP_MIN_QUALITY}, no stale prices,
+        no current price spike, crash, erratic price or thin 30-day history, volume on the weaker side (smaller of last 24 h and a normal day) ≥ {gp(cfg.minVolume24h)} items and ≥ {cfg.minCoverage}× quantity (otherwise the quantity is reduced)
         {hv ? `, profit per trade ≥ ${gp(cfg.minProfit ?? 0)} gp` : ""}. Profit = quantity × the smaller of both margins.
-        {" "}Filtered out: {result.excluded.noMargin} no positive margin, {result.excluded.lowVolume} too little volume, {result.excluded.quality} data quality, {result.excluded.stale} stale
+        {" "}Filtered out: {result.excluded.noMargin} no positive margin, {result.excluded.lowVolume} too little volume, {result.excluded.quality} data quality, {result.excluded.stale} stale, {result.excluded.history} by 30-day history
         {hv ? `, ${result.excluded.lowProfit} below minimum profit` : ""}
         {cfg.hideHeld ? `, ${result.excluded.excluded} already held` : ""}.
       </p>
@@ -278,7 +285,7 @@ export default function TopPage() {
     <div className="animate-fade-in">
       <PageHeader
         title="Top 10 Buys"
-        description="The best flip candidates right now with enough trade volume in the last 24 hours. Estimates from the last observed prices – no guarantee that offers will fill."
+        description="The best flip candidates right now: enough trade volume, checked against the last 30 days for spikes, downtrends and erratic prices. Estimates from the last observed prices – no guarantee that offers will fill."
       />
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList className="mb-3" aria-label="List">

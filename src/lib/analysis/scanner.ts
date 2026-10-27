@@ -1,8 +1,9 @@
 import { isTaxExempt } from "../tax/rules";
 import { taxPerItem } from "../tax/tax";
-import type { ItemMeta, MarketRow } from "../market/types";
+import type { ItemMeta, MarketRow, MonthAgg } from "../market/types";
 import type { ScannerFilters, SortKey } from "../storage/settings-schema";
 import { categorize, type Category } from "./category";
+import { checkHistory, type HistoryCheck } from "./history-check";
 import { assessQuality, type QualityResult, type QualityThresholds } from "./quality";
 import { assessRisk, RISK_ORDER, type RiskResult } from "./risk";
 
@@ -20,7 +21,12 @@ export interface ScannerContext {
   priceOffset: number;
   thresholds: QualityThresholds;
   dayBlocksLoaded: number;
+  /** 30-Tage-Grundlinie je Item-ID; null/fehlend = (noch) nicht geladen → keine Historienprüfung */
+  history?: Record<string, MonthAgg> | null;
 }
+
+/** Ab so vielen geladenen Tagen wird die 30-Tage-Grundlinie verwendet. */
+export const MIN_HISTORY_DAYS_LOADED = 21;
 
 export interface FlipCandidate {
   id: number;
@@ -52,6 +58,7 @@ export interface FlipCandidate {
   /**
    * Konservative Nettomarge: Verkauf = min(letzter Instant-Buy, Ø Instant-Buy), Kauf = max(letzter Instant-Sell, Ø Instant-Sell)
    * mit Ø aus dem letzten 1h-Block (sonst 24 h). Schützt das Ranking vor einzelnen Ausreisser-Transaktionen.
+   * Mit 30-Tage-Grundlinie zusätzlich: Bruttomarge ≤ 2 × typischer Tagesspread, abzüglich Trendkosten bei Abwärtstrend.
    */
   netMarginConservative: number | null;
   roiConservative: number | null;
@@ -60,8 +67,13 @@ export interface FlipCandidate {
   vol1h: number | null;
   vol24h: number | null;
   vol24hWeaker: number | null;
+  /** Volumen der schwächeren Seite für die Mengenplanung: min(24 h, normaler Tag der letzten 30 Tage) */
+  volWeakerTypical: number | null;
   /** Variationskoeffizient der Stundenpreise (24 h) */
   cv24h: number | null;
+  /** 30-Tage-Grundlinie und Abgleich (null = Grundlinie nicht geladen) */
+  hist: MonthAgg | null;
+  histCheck: HistoryCheck | null;
   quality: QualityResult;
   risk: RiskResult;
   score: number;
@@ -94,24 +106,42 @@ export function buildCandidate(meta: ItemMeta, row: MarketRow, ctx: ScannerConte
   const profitAtCapital = netMargin != null ? netMargin * qty : null;
   const potentialPerLimit = netMargin != null && meta.limit != null ? netMargin * meta.limit : null;
 
-  // Konservative Marge mit Durchschnittspreisen (1h, Fallback 24h)
+  const vol24hWeaker = row.d1 ? Math.min(row.d1.volHigh, row.d1.volLow) : null;
+
+  // 30-Tage-Abgleich (nur wenn die Grundlinie geladen ist)
+  const hist = ctx.history ? (ctx.history[meta.id] ?? null) : null;
+  let histCheck: HistoryCheck | null = null;
+  if (ctx.history) {
+    const latestMid = row.high != null && row.low != null ? (row.high + row.low) / 2 : null;
+    const h1Mid = row.h1?.avgHigh != null && row.h1.avgLow != null ? (row.h1.avgHigh + row.h1.avgLow) / 2 : null;
+    const mids = [latestMid, h1Mid].filter((m): m is number => m != null);
+    histCheck = checkHistory(hist, {
+      mid: mids.length ? Math.max(...mids) : null,
+      spread: row.high != null && row.low != null ? row.high - row.low : null,
+      buy: estBuy,
+      volWeaker24h: vol24hWeaker,
+    });
+  }
+
+  // Konservative Marge mit Durchschnittspreisen (1h, Fallback 24h), begrenzt durch die 30-Tage-Grundlinie
   const refHigh = row.h1?.avgHigh ?? row.d1?.avgHigh ?? null;
   const refLow = row.h1?.avgLow ?? row.d1?.avgLow ?? null;
   let netMarginConservative: number | null = null;
   if (estBuy != null && estSell != null && refHigh != null && refLow != null) {
-    const cSell = Math.min(estSell, Math.floor(refHigh) - ctx.priceOffset);
     const cBuy = Math.max(estBuy, Math.ceil(refLow) + ctx.priceOffset);
-    netMarginConservative = cSell - taxPerItem(cSell, meta.id) - cBuy;
+    let cSell = Math.min(estSell, Math.floor(refHigh) - ctx.priceOffset);
+    if (histCheck?.marginCap != null) cSell = Math.min(cSell, cBuy + histCheck.marginCap);
+    netMarginConservative = cSell - taxPerItem(cSell, meta.id) - cBuy - (histCheck?.driftCost ?? 0);
   }
   const roiConservative = netMarginConservative != null && estBuy != null && estBuy > 0 ? netMarginConservative / estBuy : null;
   const profitConservative = netMarginConservative != null ? netMarginConservative * qty : null;
 
   const vol1h = row.h1 ? row.h1.volHigh + row.h1.volLow : null;
   const vol24h = row.d1 ? row.d1.volHigh + row.d1.volLow : null;
-  const vol24hWeaker = row.d1 ? Math.min(row.d1.volHigh, row.d1.volLow) : null;
+  const volWeakerTypical = histCheck ? histCheck.volWeakerTypical : vol24hWeaker;
 
   const plannedQty = qty > 0 ? qty : (meta.limit ?? 1);
-  const risk = assessRisk(row, plannedQty, quality.score);
+  const risk = assessRisk(row, plannedQty, quality.score, histCheck ? { volWeaker: volWeakerTypical, dailyVol: hist?.dailyVol ?? null } : undefined);
 
   const c: FlipCandidate = {
     id: meta.id,
@@ -144,7 +174,10 @@ export function buildCandidate(meta: ItemMeta, row: MarketRow, ctx: ScannerConte
     vol1h,
     vol24h,
     vol24hWeaker,
+    volWeakerTypical,
     cv24h: row.d1?.cv ?? null,
+    hist,
+    histCheck,
     quality,
     risk,
     score: 0,
@@ -161,7 +194,8 @@ export function buildCandidate(meta: ItemMeta, row: MarketRow, ctx: ScannerConte
  *  Gewinnpotenzial beim gewählten Kapital 30 %, ROI 10 %, Liquidität 20 %,
  *  Stabilität (Volatilität & Spread) 15 %, Datenaktualität 10 %, Datenqualität 15 %.
  * Gewinn und ROI fliessen KONSERVATIV ein: jeweils der kleinere Wert aus letzter Beobachtung und
- * Durchschnittspreisen. Die Summe wird mit einem Plausibilitätsfaktor (0,5–1) multipliziert.
+ * Durchschnittspreisen. Die Summe wird mit einem Plausibilitätsfaktor (0,5–1) und, sofern die
+ * 30-Tage-Grundlinie geladen ist, mit einem Historienfaktor (0,3–1) multipliziert.
  * Items ohne positive geschätzte Nettomarge erhalten 0 Punkte.
  * Das Ranking ist eine Entscheidungshilfe, KEINE Gewinnwahrscheinlichkeit.
  */
@@ -181,7 +215,9 @@ export function rankFactors(c: FlipCandidate) {
   const quality = clamp(c.quality.score / 100);
   /** Plausibilitätsfaktor 0,5 – 1 aus der Plausibilitätskomponente der Datenqualität (0–20) */
   const plausibility = 0.5 + 0.5 * clamp(c.quality.components.plausibility / 20);
-  return { profit, roi, liquidity, stability, freshness, quality, plausibility };
+  /** Historienfaktor 0,3 – 1: Preisspitze, wiederkehrende Spitzen, Abwärtstrend, Sprunghaftigkeit, wenig Historie */
+  const history = c.histCheck?.factor ?? 1;
+  return { profit, roi, liquidity, stability, freshness, quality, plausibility, history };
 }
 
 export function rankCandidate(c: FlipCandidate): { score: number; reasons: Reason[] } {
@@ -196,10 +232,10 @@ export function rankCandidate(c: FlipCandidate): { score: number; reasons: Reaso
   }
   const f = rankFactors(c);
   const w = RANK_WEIGHTS;
-  const score = Math.round(100 * f.plausibility * (f.profit * w.profit + f.roi * w.roi + f.liquidity * w.liquidity + f.stability * w.stability + f.freshness * w.freshness + f.quality * w.quality));
+  const score = Math.round(100 * f.plausibility * f.history * (f.profit * w.profit + f.roi * w.roi + f.liquidity * w.liquidity + f.stability * w.stability + f.freshness * w.freshness + f.quality * w.quality));
 
   if (c.netMarginConservative != null && c.netMarginConservative < c.netMargin * 0.5)
-    reasons.push({ tone: "negative", text: `Margin much smaller with average prices (${Math.round(c.netMarginConservative).toLocaleString("de-CH")} gp) – possibly an outlier.` });
+    reasons.push({ tone: "negative", text: `Margin much smaller with average prices and 30-day history (${Math.round(c.netMarginConservative).toLocaleString("de-CH")} gp) – possibly an outlier.` });
   if (c.netMarginConservative == null) reasons.push({ tone: "neutral", text: "Margin can’t be checked against average prices." });
   if (c.roi != null && c.roi >= 0.03) reasons.push({ tone: "positive", text: `High estimated ROI (${(c.roi * 100).toFixed(1)}%).` });
   if (c.profitAtCapital != null && c.profitAtCapital >= 1_000_000) reasons.push({ tone: "positive", text: "High profit potential with your capital." });
@@ -211,9 +247,35 @@ export function rankCandidate(c: FlipCandidate): { score: number; reasons: Reaso
   if (c.limit != null && c.qtyByCapital > c.limit) reasons.push({ tone: "neutral", text: `Limited buy limit (${c.limit} / 4 h).` });
   if (c.limit == null) reasons.push({ tone: "neutral", text: "Buy limit not available." });
   if (c.quality.score < 50) reasons.push({ tone: "negative", text: "Low data quality." });
+  reasons.push(...historyReasons(c));
   if (c.taxExempt) reasons.push({ tone: "positive", text: "Tax-free item." });
   if (c.qty === 0) reasons.push({ tone: "negative", text: "Not enough capital for 1 item." });
   return { score, reasons };
+}
+
+const signedPct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
+
+/** Begründungen aus dem 30-Tage-Abgleich. */
+export function historyReasons(c: FlipCandidate): Reason[] {
+  const hc = c.histCheck;
+  const h = c.hist;
+  if (!hc) return [];
+  const out: Reason[] = [];
+  if (hc.thin) {
+    out.push({ tone: "negative", text: `Little 30-day history (${h?.days ?? 0} of 30 days traded).` });
+    return out;
+  }
+  if (hc.spike && hc.deviation != null) out.push({ tone: "negative", text: `Price spike: ${signedPct(hc.deviation)} vs. its 7-day level – likely to fall back.` });
+  else if (hc.recurringSpikes && hc.elevated) out.push({ tone: "negative", text: `Spikes regularly (${h?.spikeDays} spike days in 30) and is above normal right now.` });
+  else if (hc.recurringSpikes) out.push({ tone: "neutral", text: `Spikes regularly (${h?.spikeDays} spike days in 30) – check the chart before buying.` });
+  if (hc.crash && h?.trend7 != null) out.push({ tone: "negative", text: `Price falling fast (${signedPct(h.trend7)} per day over 7 days).` });
+  else if (hc.downtrend && h?.trend7 != null) out.push({ tone: "negative", text: `Downtrend (${signedPct(h.trend7)} per day) – margin reduced by ${hc.driftCost.toLocaleString("de-CH")} gp expected loss while holding.` });
+  if (hc.erratic && h?.dailyVol != null) out.push({ tone: "negative", text: `Erratic price (±${(h.dailyVol * 100).toFixed(0)}% day to day).` });
+  if (hc.wideSpread && h?.spread != null) out.push({ tone: "negative", text: `Spread unusually wide (normal ≈ ${Math.round(h.spread).toLocaleString("de-CH")} gp) – margin capped.` });
+  if (hc.volumeBurst) out.push({ tone: "neutral", text: "Unusually busy trading day – quantity based on a normal day." });
+  if (!hc.spike && !hc.recurringSpikes && !hc.downtrend && !hc.erratic && h?.dailyVol != null && h.dailyVol < 0.03 && h.days >= 25)
+    out.push({ tone: "positive", text: "Stable over 30 days." });
+  return out;
 }
 
 export function buildCandidates(items: ItemMeta[], rows: MarketRow[], ctx: ScannerContext): FlipCandidate[] {

@@ -2,6 +2,7 @@
 import { ChevronLeft, ChevronRight, Filter, Save, Trash2 } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import { EmptyState, ErrorNote, InfoNote, PageHeader, Skeleton } from "@/components/common/indicators";
+import { HistoryStatusNote } from "@/components/common/history-check";
 import { ScannerFilterPanel } from "@/components/scanner/filters";
 import { ScannerTable } from "@/components/scanner/scanner-table";
 import { Button } from "@/components/ui/button";
@@ -153,6 +154,8 @@ export default function ScannerPage() {
         </span>
         <span>Buy = instant-sell + {settings.priceOffset} gp, sell = instant-buy − {settings.priceOffset} gp · tax 2% (max 5M/item)</span>
       </div>
+
+      <div className="mb-2 empty:hidden"><HistoryStatusNote /></div>
 
       {market.data && market.data.meta.day.blocksLoaded < 24 && (
         <div className="mb-2">
