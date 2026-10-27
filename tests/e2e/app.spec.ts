@@ -300,3 +300,41 @@ test("Flip-Historie: „Verkaufen“ bei offenem Trade füllt Menge vor", async 
   await expect(page.getByTestId("sale-qty").last()).toHaveValue("10");
   await expect(page.getByTestId("sale-price").last()).not.toHaveValue("");
 });
+
+test("App-Update: Link zeigt neue Commits und führt git pull aus (API simuliert)", async ({ page }) => {
+  // Die echte Route würde im Projektordner `git pull` ausführen – im Test daher abgefangen.
+  const version = { branch: "main", commit: "abc1234", commitDate: "2026-10-26T10:00:00+01:00", subject: "Letzte Änderung" };
+  let pulled = false;
+  await page.route("**/api/update**", async (route) => {
+    const req = route.request();
+    if (req.method() === "POST") {
+      pulled = true;
+      return route.fulfill({
+        json: { ok: true, updated: true, from: "abc1234", to: "def5678aaaa", output: "Fast-forward\n src/app/page.tsx | 2 +-", commits: ["def5678 Neue Funktion"], needsInstall: true, needsRestart: true },
+      });
+    }
+    const check = new URL(req.url()).searchParams.get("check") === "1";
+    return route.fulfill({ json: { enabled: true, version, ...(check ? { behind: 1, upstream: "origin/main" } : {}) } });
+  });
+
+  await openApp(page);
+  await page.getByTestId("app-update-link").click();
+  const dialog = page.getByTestId("app-update-dialog");
+  await expect(dialog).toContainText("abc1234");
+  await expect(page.getByTestId("app-update-check")).toHaveText(/1 new commit available on origin\/main/);
+
+  await page.getByTestId("app-update-pull").click();
+  await expect(page.getByTestId("app-update-result")).toContainText("Updated to def5678");
+  await expect(page.getByTestId("app-update-result")).toContainText("npm install");
+  await expect(page.getByTestId("app-update-output")).toContainText("Fast-forward");
+  expect(pulled).toBe(true);
+});
+
+test("App-Update: Link ausgeblendet, wenn nicht verfügbar", async ({ page }) => {
+  await page.route("**/api/update**", (route) => route.fulfill({ json: { enabled: false, reason: "Not available on hosted deployments." } }));
+  const status = page.waitForResponse("**/api/update");
+  await openApp(page);
+  await status;
+  await expect(page.getByText("Not an official Jagex product.")).toBeVisible();
+  await expect(page.getByTestId("app-update-link")).toHaveCount(0);
+});

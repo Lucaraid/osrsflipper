@@ -9,6 +9,7 @@ import { DataStatus, FixtureBanner, StaleBanner } from "./data-status";
 import { MOBILE_TABS, NAV, NAV_TONES } from "./nav";
 import { SearchCommand } from "./search-command";
 import { FolderStatusChip } from "./folder-sync";
+import { AppUpdateLink } from "./app-update";
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -100,6 +101,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link className="underline hover:text-muted" href="/privacy">Privacy</Link>
           </p>
           <p>Not an official Jagex product.</p>
+          <AppUpdateLink />
         </div>
       </aside>
 
@@ -119,6 +121,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link href="/methodology" onClick={() => setDrawer(false)} className="underline">Methodology</Link> ·{" "}
               <Link href="/privacy" onClick={() => setDrawer(false)} className="underline">Privacy</Link>
             </p>
+            <div className="mt-2 text-[11px] text-faint">
+              <AppUpdateLink />
+            </div>
           </div>
         </div>
       )}

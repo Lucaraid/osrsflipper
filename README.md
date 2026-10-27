@@ -54,6 +54,16 @@ npm run build
 npm start                       # http://localhost:3000
 ```
 
+### App aktualisieren
+
+Läuft die App lokal aus einem Git-Klon, erscheint unten in der Seitenleiste der Link **„Update app“**. Er zeigt die installierte Version, prüft per `git fetch`, ob neue Commits vorliegen, und lädt sie auf Knopfdruck mit `git pull --ff-only` – ohne Konsole. Danach:
+
+- `npm run dev`: Änderungen werden automatisch übernommen, Seite neu laden.
+- Haben sich `package.json`/`package-lock.json` geändert: `npm install` ausführen und neu starten (die App weist darauf hin).
+- `npm start` (Produktions-Build): `npm run build` und neu starten.
+
+Sicherheit: Es werden nur fest definierte Git-Befehle ausgeführt. Die Funktion ist nur über `localhost`/`127.0.0.1` erreichbar, POST nur vom selben Origin, auf Vercel automatisch aus und per `SELF_UPDATE=0` abschaltbar. Lokale Commits werden nie gemergt (`--ff-only`); in diesem Fall zeigt der Dialog die Git-Meldung.
+
 ## Skripte
 
 | Befehl | Zweck |
@@ -75,6 +85,8 @@ Siehe `.env.example`:
 | `WIKI_USER_AGENT` | generischer UA | **Pflicht für Produktion.** Beschreibender User-Agent mit Kontakt (E-Mail/Discord), wie in der API-Doku gefordert. |
 | `MARKET_DATA_SOURCE` | `wiki` | `fixtures` schaltet auf **synthetische Testdaten** (nur für Tests). Die UI zeigt dann ein unübersehbares „TESTDATEN“-Banner. |
 | `API_RATE_LIMIT_PER_MINUTE` | `120` | Rate-Limit der eigenen API-Routen pro IP und Minute. |
+| `SELF_UPDATE` | an | `0` blendet den Link „Update app“ aus und sperrt `/api/update` (auf Vercel immer aus). |
+| `GIT_PATH` | – | Pfad zu `git`, falls es nicht im `PATH` liegt (unter Windows wird zusätzlich `C:\Program Files\Git\cmd\git.exe` versucht). |
 
 Es werden keine Geheimnisse oder API-Schlüssel benötigt.
 
@@ -114,6 +126,8 @@ Alle Routen antworten mit JSON (gzip, wenn der Client es akzeptiert), sind per I
 | `GET /api/market` | – | `{ meta, rows: MarketRow[] }`: latest + 5m + 1h + 24h-Aggregat je Item, inkl. Abrufzeitpunkten und Stale-Status | `s-maxage=20` |
 | `GET /api/timeseries` | `id` (int), `lookback` ∈ `6h,24h,7d,30d,6m,1y` | `{ meta (timestep, start, end, stale), itemId, points }` | `s-maxage=60` |
 | `GET /api/health` | – | `{ ok, source, time }` | `no-store` |
+| `GET /api/update` | `check=1` (optional, mit `git fetch`) | `{ enabled, version, behind?, upstream? }` bzw. `{ enabled: false, reason }` | `no-store` |
+| `POST /api/update` | – | `git pull --ff-only`: `{ ok, updated, commits, output, needsInstall, needsRestart }`; nur localhost + gleicher Origin | `no-store` |
 
 Status: `400` bei ungültigen Parametern, `429` bei Rate-Limit (mit `Retry-After`), `503`, wenn die Wiki-API nicht erreichbar ist und keine zwischengespeicherten Daten vorliegen. Typen: `src/lib/market/types.ts`.
 
@@ -154,6 +168,8 @@ Alternativ läuft die App auf jeder Node-Plattform mit `npm run build && npm sta
 | Persönliche Daten weg | Browserdaten wurden gelöscht oder der private Modus wurde genutzt. Regelmässig unter Einstellungen exportieren. |
 | E2E-Tests finden keinen Browser | `npx playwright install chromium` |
 | Port belegt | `npm start -- -p 3001` |
+| „Update app“ fehlt | App über `http://localhost:3000` öffnen (nicht über die LAN-IP), Ordner muss ein Git-Klon sein, `git` muss installiert sein (sonst `GIT_PATH` setzen). |
+| Update schlägt fehl („Not possible to fast-forward“) | Lokale Commits weichen vom Remote ab. Im Projektordner manuell `git pull --rebase` oder die Änderungen sichern. |
 
 ## Weitere Dokumentation
 
