@@ -9,3 +9,7 @@ next-env.d.ts
 playwright-report
 test-results
 coverage
+
+# Persönliche Trade-Daten (falls der Projektordner als Speicherort gewählt wurde)
+osrs-ge-flipper-daten.json
+trades.csv

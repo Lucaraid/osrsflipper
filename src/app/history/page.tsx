@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { useItemMap, useRowMap } from "@/hooks/market";
 import { useSettings } from "@/state/settings";
-import { computeFifo, type TradeStatus } from "@/lib/portfolio/fifo";
+import { computeFifo, investedInOpenFlips, type TradeStatus } from "@/lib/portfolio/fifo";
 import type { Trade } from "@/lib/portfolio/schemas";
 import { dateTime, duration, gpShort } from "@/lib/format";
 import { useDataStore } from "@/state/data";
@@ -64,6 +64,9 @@ export default function HistoryPage() {
     return list;
   }, [trades, q, status, result, from, to, sort]);
 
+  // Unabhängig von den Filtern: alles, was aktuell in offenen Flips steckt
+  const invested = useMemo(() => investedInOpenFlips(trades.map(computeFifo)), [trades]);
+
   const totals = useMemo(() => {
     const realized = rows.reduce((a, r) => a + r.s.realized, 0);
     const closed = rows.filter((r) => r.s.status === "geschlossen");
@@ -98,7 +101,15 @@ export default function HistoryPage() {
         </div>
       ) : null}
 
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="col-span-2 sm:col-span-1" data-testid="invested-open">
+          <Stat
+            label="Invested in open flips"
+            value={<Gp value={invested.invested} />}
+            sub={`${invested.openFlips} open flip${invested.openFlips === 1 ? "" : "s"}`}
+            hint="FIFO cost of all items you still hold (buy price × open quantity), regardless of filters"
+          />
+        </div>
         <Stat label="Trades (filtered)" value={totals.count} />
         <Stat label="Realised profit" value={<Gp value={totals.realized} short colored />} hint="FIFO, after GE tax and fees" />
         <Stat label="Closed" value={totals.closed} />

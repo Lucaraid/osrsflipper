@@ -117,6 +117,8 @@ async function createTrade(page: Page, navigate = true) {
 test("7.–9. Trade erstellen, Teilverkauf erfassen, realisierten Gewinn prüfen", async ({ page }) => {
   await createTrade(page);
   await expect(page.getByTestId("trade-row")).toContainText("open");
+  // 10 × 1000 gp offen investiert
+  await expect(page.getByTestId("invested-open")).toContainText(/10.000/);
   await page.getByTestId("edit-trade").click();
   await page.getByTestId("add-sale").click();
   await page.getByTestId("sale-qty").fill("4");
@@ -126,6 +128,8 @@ test("7.–9. Trade erstellen, Teilverkauf erfassen, realisierten Gewinn prüfen
   await page.getByTestId("save-trade").click();
   await expect(page.getByTestId("trade-row")).toContainText("partly sold");
   await expect(page.getByTestId("trade-realized")).toHaveText("312");
+  // nach Verkauf von 4 Stück: noch 6 × 1000 investiert
+  await expect(page.getByTestId("invested-open")).toContainText(/6.000/);
 
   // Überverkauf wird verhindert
   await page.getByTestId("edit-trade").click();

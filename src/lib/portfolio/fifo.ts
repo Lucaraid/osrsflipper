@@ -179,6 +179,12 @@ export function computeFifo(trade: Trade): TradeSummary {
  * Prüft, ob ein Trade konsistent ist (kein Überverkauf, kein Verkauf vor dem Kauf).
  * Wird vor dem Speichern aufgerufen, damit keine Stückzahl doppelt als Gewinn zählt.
  */
+/** In offenen Flips gebundenes Kapital: Summe der FIFO-Einstände aller noch gehaltenen Stücke */
+export function investedInOpenFlips(summaries: TradeSummary[]): { invested: number; openFlips: number } {
+  const open = summaries.filter((s) => s.openQty > 0);
+  return { invested: open.reduce((a, s) => a + s.openCostBasis, 0), openFlips: open.length };
+}
+
 export function validateTrade(trade: Trade): string[] {
   return computeFifo(trade).errors;
 }

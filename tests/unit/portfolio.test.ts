@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeFifo, validateTrade } from "@/lib/portfolio/fifo";
+import { computeFifo, investedInOpenFlips, validateTrade } from "@/lib/portfolio/fifo";
 import { checkPositionRules, computePortfolio, computeTimeline } from "@/lib/portfolio/portfolio";
 import type { CapitalEvent, Trade } from "@/lib/portfolio/schemas";
 
@@ -65,6 +65,30 @@ describe("FIFO-Einstandskosten", () => {
       sales: [{ id: "s", date: T0, quantity: 1, price: 20, tax: null, fees: 0 }],
     });
     expect(validateTrade(t)).toHaveLength(1);
+  });
+});
+
+describe("Investiert in offenen Flips", () => {
+  it("summiert den FIFO-Einstand offener Stücke, geschlossene Flips zählen nicht", () => {
+    const partly = trade({
+      id: "p",
+      lots: [
+        { id: "a", date: T0, quantity: 10, price: 1_000, fees: 0 },
+        { id: "b", date: T0 + H, quantity: 10, price: 1_200, fees: 0 },
+      ],
+      sales: [{ id: "s1", date: T0 + 2 * H, quantity: 15, price: 1_500, tax: null, fees: 0 }],
+    });
+    const closed = trade({
+      id: "c",
+      lots: [{ id: "c1", date: T0, quantity: 5, price: 500, fees: 0 }],
+      sales: [{ id: "c2", date: T0 + H, quantity: 5, price: 600, tax: null, fees: 0 }],
+    });
+    const fresh = trade({ id: "f", lots: [{ id: "f1", date: T0, quantity: 3, price: 2_000, fees: 0 }], sales: [] });
+    const r = investedInOpenFlips([partly, closed, fresh].map(computeFifo));
+    // 5 × 1200 (restliche Charge b) + 3 × 2000
+    expect(r.invested).toBe(12_000);
+    expect(r.openFlips).toBe(2);
+    expect(investedInOpenFlips([])).toEqual({ invested: 0, openFlips: 0 });
   });
 });
 
