@@ -78,6 +78,17 @@ export function prepareTrade(
   return { draft: emptyTrade(item.id, item.name, { price: values?.buy ?? null, quantity: values?.qty ?? null }), mode: "buy" };
 }
 
+/** Spaltenüberschriften über den Eingabezeilen (gleiches Grid wie die Zeilen; mobil zeigen die Platzhalter die Bedeutung) */
+function ColHeads({ cols, grid, testId }: { cols: string[]; grid: string; testId?: string }) {
+  return (
+    <div className={`hidden gap-2 px-0.5 text-[11px] font-medium text-muted sm:grid ${grid}`} data-testid={testId}>
+      {cols.map((c, i) => (
+        <span key={i}>{c}</span>
+      ))}
+    </div>
+  );
+}
+
 function isComplete<T extends { quantity: number | null; price: number | null }>(x: T): x is T & { quantity: number; price: number } {
   return x.quantity != null && x.price != null && x.quantity > 0 && x.price > 0;
 }
@@ -145,8 +156,9 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
               </Button>
             </div>
             <div className="space-y-2">
+              {d.lots.length > 0 && <ColHeads grid="sm:grid-cols-[1.4fr_1fr_1fr_2.25rem]" cols={["Buy date", "Quantity", "Buy price each (gp)", ""]} testId="lot-heads" />}
               {d.lots.map((l, i) => (
-                <div key={l.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_auto]" data-testid="lot-row">
+                <div key={l.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_2.25rem]" data-testid="lot-row">
                   <Input type="datetime-local" value={toLocalInput(l.date)} onChange={(e) => upd("lots", i, { date: fromLocalInput(e.target.value) })} aria-label="Buy date" />
                   <AmountInput value={l.quantity} onChange={(v) => upd("lots", i, { quantity: v })} placeholder="Quantity" aria-label="Quantity bought" data-testid="lot-qty" />
                   <AmountInput value={l.price} onChange={(v) => upd("lots", i, { price: v })} placeholder="Price each" aria-label="Buy price each" data-testid="lot-price" />
@@ -173,8 +185,9 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
               </Button>
             </div>
             <div className="space-y-2">
+              {d.sales.length > 0 && <ColHeads grid="sm:grid-cols-[1.4fr_1fr_1fr_1fr_2.25rem]" cols={["Sale date", "Quantity", "Sell price each (gp)", "Tax paid (optional, total)", ""]} testId="sale-heads" />}
               {d.sales.map((s, i) => (
-                <div key={s.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_1fr_auto]" data-testid="sale-row">
+                <div key={s.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_1fr_2.25rem]" data-testid="sale-row">
                   <Input type="datetime-local" value={toLocalInput(s.date)} onChange={(e) => upd("sales", i, { date: fromLocalInput(e.target.value) })} aria-label="Sale date" />
                   <AmountInput value={s.quantity} onChange={(v) => upd("sales", i, { quantity: v })} placeholder="Quantity" aria-label="Quantity sold" data-testid="sale-qty" />
                   <AmountInput value={s.price} onChange={(v) => upd("sales", i, { price: v })} placeholder="Price each" aria-label="Sell price each" data-testid="sale-price" />
@@ -202,8 +215,9 @@ export function TradeEditor({ initial, open, onOpenChange, mode }: { initial: Tr
               </Button>
             </div>
             <div className="space-y-2">
+              {d.offers.length > 0 && <ColHeads grid="sm:grid-cols-[1.4fr_1fr_1fr_7.5rem_2.25rem]" cols={["Offer date", "Quantity", "Bid each (gp)", "", ""]} />}
               {d.offers.map((o, i) => (
-                <div key={o.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_auto_auto]">
+                <div key={o.id} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.4fr_1fr_1fr_7.5rem_2.25rem]">
                   <Input type="datetime-local" value={toLocalInput(o.date)} onChange={(e) => upd("offers", i, { date: fromLocalInput(e.target.value) })} aria-label="Offer date" />
                   <AmountInput value={o.quantity} onChange={(v) => upd("offers", i, { quantity: v })} placeholder="Quantity" aria-label="Offer quantity" />
                   <AmountInput value={o.price} onChange={(v) => upd("offers", i, { price: v })} placeholder="Bid each" aria-label="Bid each" />
