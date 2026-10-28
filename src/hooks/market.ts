@@ -5,6 +5,7 @@ import type { ItemMeta, ItemsResponse, Lookback, MarketRow, MarketSnapshot, Time
 import { buildIndex } from "@/lib/search/search";
 import { buildCandidates, type FlipCandidate } from "@/lib/analysis/scanner";
 import { useSettings } from "@/state/settings";
+import { useBuyLimits } from "./buy-limits";
 import { useNow } from "./use-now";
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -86,6 +87,7 @@ export function useCandidates(capitalOverride?: number): { candidates: FlipCandi
   const settings = useSettings();
   const capital = capitalOverride ?? settings.defaultCapital;
   const now = useNow(30_000);
+  const { used } = useBuyLimits();
   const candidates = useMemo(() => {
     if (!items.data || !market.data) return [];
     return buildCandidates(items.data.items, market.data.rows, {
@@ -94,7 +96,8 @@ export function useCandidates(capitalOverride?: number): { candidates: FlipCandi
       priceOffset: settings.priceOffset,
       thresholds: settings.freshness,
       dayBlocksLoaded: market.data.meta.day.blocksLoaded,
+      limitUsed: used,
     });
-  }, [items.data, market.data, now, capital, settings.priceOffset, settings.freshness]);
+  }, [items.data, market.data, now, capital, settings.priceOffset, settings.freshness, used]);
   return { candidates, isLoading: items.isLoading || market.isLoading, error: (items.error ?? market.error) as Error | null };
 }

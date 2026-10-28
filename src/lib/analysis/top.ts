@@ -11,6 +11,9 @@ import type { FlipCandidate } from "./scanner";
  * Ist die nach Kapital/Limit mögliche Menge zu gross für Kriterium 2, wird die Menge reduziert
  * (auf ⌊24h-Volumen ÷ minCoverage⌋), statt das Item auszuschliessen.
  *
+ * Items, deren Kauflimit durch eigene Käufe im 4-h-Fenster aufgebraucht ist, fallen weg; sonst
+ * begrenzt das Restlimit die Menge (siehe scanner.ts / portfolio/buy-limit.ts).
+ *
  * Weitere Voraussetzungen: positive Marge nach letzter Beobachtung UND mit Durchschnittspreisen,
  * Datenqualität ≥ 60, plausible Marge, keine veralteten Preise.
  * Gewinne werden konservativ gerechnet (kleinere der beiden Margen).
@@ -45,16 +48,17 @@ export interface TopPick {
 export interface TopResult {
   picks: TopPick[];
   considered: number;
-  excluded: { noMargin: number; lowVolume: number; quality: number; stale: number; excluded: number; lowProfit: number };
+  excluded: { noMargin: number; lowVolume: number; quality: number; stale: number; excluded: number; lowProfit: number; limitUsedUp: number };
 }
 
 export const TOP_MIN_QUALITY = 60;
 
 export function topBuys(cands: FlipCandidate[], o: TopOptions): TopResult {
-  const ex = { noMargin: 0, lowVolume: 0, quality: 0, stale: 0, excluded: 0, lowProfit: 0 };
+  const ex = { noMargin: 0, lowVolume: 0, quality: 0, stale: 0, excluded: 0, lowProfit: 0, limitUsedUp: 0 };
   const picks: TopPick[] = [];
   for (const c of cands) {
     if (o.excludeIds?.has(c.id)) { ex.excluded++; continue; }
+    if (c.limitLeft === 0) { ex.limitUsedUp++; continue; }
     if (c.netMargin == null || c.netMargin <= 0 || c.netMarginConservative == null || c.netMarginConservative <= 0 || c.estBuy == null || c.qty <= 0) { ex.noMargin++; continue; }
     if (c.quality.score < TOP_MIN_QUALITY || c.quality.components.plausibility < 10) { ex.quality++; continue; }
     if (c.quality.freshness <= 0) { ex.stale++; continue; }

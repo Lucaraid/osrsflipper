@@ -9,6 +9,8 @@ import { ItemIcon } from "@/components/common/item-icon";
 import { WatchButton } from "@/components/common/watch-button";
 import { ProfitCalculator } from "@/components/items/profit-calculator";
 import { emptyTrade, findOpenTrade, prepareTrade, TradeEditor } from "@/components/trades/trade-editor";
+import { limitStatusText } from "@/components/trades/buy-limits";
+import { useBuyLimits } from "@/hooks/buy-limits";
 import { useCalcStore } from "@/state/calc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ import type { Trade } from "@/lib/portfolio/schemas";
 import { dateTime, duration, gp, gpShort, num, pct } from "@/lib/format";
 import { useDataStore } from "@/state/data";
 import { useSettings } from "@/state/settings";
+import { cn } from "@/lib/utils";
 
 const LOOKBACK_LABEL: Record<Lookback, string> = { "6h": "6 h", "24h": "24 h", "7d": "7 d", "30d": "30 d", "6m": "6 m", "1y": "1 y" };
 
@@ -46,6 +49,7 @@ export default function ItemDetailPage() {
   const meta = items.data?.items.find((i) => i.id === id);
   const row = market.data?.rows.find((r) => r.id === id);
   const { candidates } = useCandidates();
+  const limits = useBuyLimits();
   const cand = candidates.find((c) => c.id === id);
   const [lookback, setLookback] = useState<Lookback>("24h");
   const ts = useTimeseries(valid ? id : null, lookback);
@@ -100,6 +104,11 @@ export default function ItemDetailPage() {
             <Badge>{meta.members ? "Members" : "F2P"}</Badge>
             {cand?.taxExempt && <Badge tone="pos">tax-free</Badge>}
             <span>Limit: {meta.limit != null ? `${gp(meta.limit)} / 4 h` : "Not available"}</span>
+            {limits.usage.has(meta.id) && (
+              <span className={cn("font-medium", cand?.limitLeft === 0 ? "text-neg" : "text-warn")} data-testid="item-limit-usage">
+                ({limitStatusText(meta.limit, limits.usage.get(meta.id), limits.now)})
+              </span>
+            )}
             {meta.highalch != null && <span>· High Alch: {gp(meta.highalch)}</span>}
           </div>
           {meta.examine && <p className="mt-0.5 text-xs italic text-faint">“{meta.examine}”</p>}

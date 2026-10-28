@@ -51,6 +51,7 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
           <div className="flex flex-wrap items-center gap-1 text-[11px] text-faint">
             <span>#{c.id}</span>
             <span>· Limit {c.limit != null ? gp(c.limit) : "–"}/4 h</span>
+            {c.limitUsed > 0 && c.limitLeft != null && <span className="font-medium text-warn" data-testid="top-limit-left">({gp(c.limitLeft)} left)</span>}
             <span>· prices <Age seconds={c.ageSec} /></span>
             {c.taxExempt && <Badge tone="pos">tax-free</Badge>}
           </div>
@@ -71,6 +72,11 @@ function PickCard({ p, rank }: { p: TopPick; rank: number }) {
           <div className="text-[11px] text-faint">Quantity</div>
           <div className="num">
             {p.qty.toLocaleString("de-CH")}
+            {c.limitUsed > 0 && c.limit != null && c.qtyByCapital > c.qty && !p.qtyReducedByVolume && (
+              <Tip content={`Quantity reduced to what is left of your 4 h buy limit (${c.limitUsed.toLocaleString("de-CH")} of ${c.limit.toLocaleString("de-CH")} already bought or on offer).`}>
+                <span className="ml-1 cursor-help text-warn">↓</span>
+              </Tip>
+            )}
             {p.qtyReducedByVolume && (
               <Tip content={`Quantity reduced because of 24h volume (otherwise ${c.qty.toLocaleString("de-CH")}).`}>
                 <span className="ml-1 cursor-help text-warn">↓</span>
@@ -259,7 +265,8 @@ function TopView({ mode, cfg, setCfg, baseCapital, capitalHint, onCapital, capit
         {hv ? `, profit per trade ≥ ${gp(cfg.minProfit ?? 0)} gp` : ""}. Profit = quantity × the smaller of both margins.
         {" "}Filtered out: {result.excluded.noMargin} no positive margin, {result.excluded.lowVolume} too little volume, {result.excluded.quality} data quality, {result.excluded.stale} stale
         {hv ? `, ${result.excluded.lowProfit} below minimum profit` : ""}
-        {cfg.hideHeld ? `, ${result.excluded.excluded} already held` : ""}.
+        {cfg.hideHeld ? `, ${result.excluded.excluded} already held` : ""}
+        {result.excluded.limitUsedUp ? `, ${result.excluded.limitUsedUp} buy limit used up` : ""}.
       </p>
     </>
   );

@@ -126,6 +126,7 @@ Alle Strategien setzen voraus: positive Marge (letzte und konservative), Qualit�
 - Basis: Scanner-Kandidaten mit Kapital pro Flip (Standard: Gesamtkapital ÷ GE-Slots).
 - Voraussetzungen: positive Marge (letzte Beobachtung **und** mit Ø-Preisen der letzten Stunde), Datenqualität ≥ 60, Plausibilität ≥ 10, keine veralteten Preise.
 - **Volumen 24 h** (schwächere Seite, weil Kauf und Verkauf gefüllt werden müssen): ≥ Mindeststückzahl (Standard 500) und ≥ x-fache empfohlene Menge (Standard 10×). Reicht das Volumen nicht für die volle Menge, wird sie auf ⌊Volumen ÷ x⌋ reduziert.
+- **Kauflimit:** Items, deren 4-h-Limit durch eigene erfasste Käufe/offene Angebote aufgebraucht ist, fallen weg; sonst begrenzt das Restlimit die Menge (siehe Abschnitt 13).
 - Gewinn = Menge × min(Marge letzte Beobachtung, Marge mit Ø-Preisen). Sortierung: Ranking (Standard), Gewinn pro Flip oder ROI; Tiebreaker Gewinn, dann Item-ID.
 
 ### High Value (Tab auf derselben Seite)
@@ -134,3 +135,10 @@ Alle Strategien setzen voraus: positive Marge (letzte und konservative), Qualit�
 - „Trade“ = ein Kauf bis zum GE-Limit (4 h) bzw. bis zur durch Kapital/Volumen begrenzten Menge.
 - Erreichen weniger als 10 Items den Mindestgewinn, werden bis zu 5 Items „knapp darunter“ separat angezeigt.
 - Beobachtung am 26.10.2026: Mit 100M gp pro Trade erreichen nur wenige Items 2M gp konservativen Gewinn; mit 10M gp keines.
+
+## 13. Kauflimit-Tracker (`portfolio/buy-limit.ts`)
+
+- Regel laut OSRS Wiki: Das GE-Kauflimit gilt pro Item für **4 h ab dem ersten Kauf**. Alle Käufe in diesem Fenster zählen; danach ist das volle Limit wieder verfügbar, der nächste Kauf startet ein neues Fenster.
+- Verbraucht = gefüllte Kaufchargen im aktuellen Fenster (nach erfasstem Kaufdatum) + offene Kaufangebote (verbrauchen das Limit beim Füllen). Kaufdaten in der Zukunft zählen erst ab Erreichen.
+- Scanner und Top 10: Menge = min(⌊Kapital ÷ Kauf⌋, Limit − verbraucht). „Potenzial pro Limit“ bleibt auf das volle Limit bezogen.
+- Anzeige: Dashboard-Karte „Buy limits (4 h)“ (Restlimit, Reset-Zeitpunkt), Item-Seite, Top-10-Karten und Scanner-Spalte „Qty / limit“.

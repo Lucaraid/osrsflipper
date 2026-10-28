@@ -6,6 +6,7 @@ import { TimeChart, type ChartSeries } from "@/components/charts/time-chart";
 import { EmptyState, ErrorNote, Est, Gp, InfoNote, Pct, Skeleton, Stat } from "@/components/common/indicators";
 import { ItemIcon } from "@/components/common/item-icon";
 import { ScannerTable } from "@/components/scanner/scanner-table";
+import { BuyLimitsCard } from "@/components/trades/buy-limits";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -133,7 +134,7 @@ export default function DashboardPage() {
         <p className="border-t border-border px-4 py-2 text-[11px] text-faint">Profits<Est /> are estimates from the last observed prices. Actual fills are not guaranteed.</p>
       </Card>
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-3">
         <Card>
           <CardHeader title="Open flips" actions={<Link href="/history" className="text-xs text-accent">History</Link>} />
           {openOnes.length === 0 ? (
@@ -173,6 +174,7 @@ export default function DashboardPage() {
             </ul>
           )}
         </Card>
+        <BuyLimitsCard />
       </div>
     </div>
   );

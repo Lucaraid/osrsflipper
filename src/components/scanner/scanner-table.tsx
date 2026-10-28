@@ -133,6 +133,9 @@ export function ScannerTable({ rows, compact = false }: { rows: FlipCandidate[];
                 <td className="px-2 py-1.5 text-right num">
                   {c.qty.toLocaleString("de-CH")}
                   <span className="text-faint"> / {c.limit != null ? c.limit.toLocaleString("de-CH") : "–"}</span>
+                  {c.limitUsed > 0 && c.limitLeft != null && (
+                    <span className={cn("block text-[10px]", c.limitLeft === 0 ? "text-neg" : "text-warn")}>{c.limitLeft.toLocaleString("de-CH")} left</span>
+                  )}
                 </td>
                 {!compact && <td className="px-2 py-1.5 text-right"><Gp value={c.capitalRequired} short /></td>}
                 <td className="px-2 py-1.5 text-right font-medium"><Gp value={c.profitAtCapital} short colored /></td>

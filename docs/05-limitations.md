@@ -18,7 +18,7 @@
 ## Bekannte Einschränkungen (datenbedingt)
 
 - **Keine ausführbaren Preise:** Die API liefert letzte Transaktionen und Durchschnitte, kein Orderbuch. Margen sind Schätzungen. Ob ein Gebot gefüllt wird, ist nicht vorhersagbar.
-- **Kauflimits:** `mapping.limit` fehlt bei ca. 520 Items (bei 2 ist es 0). Diese Items gelten als „Limit nicht verfügbar“. Das 4-Stunden-Fenster des Limits wird nicht pro Nutzer nachverfolgt, weil der Zeitpunkt der Käufe im Spiel unbekannt ist.
+- **Kauflimits:** `mapping.limit` fehlt bei ca. 520 Items (bei 2 ist es 0). Diese Items gelten als „Limit nicht verfügbar“. Das 4-Stunden-Fenster wird aus den **im Tracker erfassten** Käufen und offenen Angeboten berechnet (`src/lib/portfolio/buy-limit.ts`). Käufe, die nicht erfasst sind, kennt die App nicht; massgebend ist das erfasste Kaufdatum, nicht der genaue Zeitpunkt im Spiel.
 - **Historische Stichprobe:** Daten vor dem 30.09.2026 stammen laut Wiki nur von RuneLite-Nutzern.
 - **Zeitreihen-Auflösung:** Die Schrittweite von `/timeseries` ist laut Doku nicht garantiert. Sie wird angezeigt und nie angenommen. Beobachtet: 6h/24h → 5 min, 7d → 1 h, 30d → 6 h, 6m/1y → 1 Tag.
 - **Steuerausnahmen:** Spiel-Updates können die Liste ändern. Sie ist zentral in `src/lib/tax/rules.ts` gepflegt (Stand 24.10.2026, `verifiedAt`).
@@ -34,7 +34,6 @@
 
 1. Serverseitige Alarme (Web Push + Cron/Queue), opt-in mit Datenschutzhinweis
 2. Persistenter Server-Cache (z. B. Redis/KV) für gemeinsame Caches über Serverless-Instanzen
-3. Nachverfolgung des 4-h-Limits aus erfassten Käufen (Restlimit-Anzeige)
-4. Mehrsprachigkeit (EN)
-5. Service Worker für Offline-Nutzung der persönlichen Daten
-6. Weitere Datenquellen über das `MarketSource`-Interface
+3. Mehrsprachigkeit (EN)
+4. Service Worker für Offline-Nutzung der persönlichen Daten
+5. Weitere Datenquellen über das `MarketSource`-Interface

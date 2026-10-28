@@ -20,6 +20,8 @@ export interface ScannerContext {
   priceOffset: number;
   thresholds: QualityThresholds;
   dayBlocksLoaded: number;
+  /** Bereits verbrauchtes Kauflimit pro Item (eigene Käufe + offene Angebote im 4-h-Fenster) */
+  limitUsed?: ReadonlyMap<number, number>;
 }
 
 export interface FlipCandidate {
@@ -29,6 +31,10 @@ export interface FlipCandidate {
   members: boolean;
   category: Category;
   limit: number | null;
+  /** Im aktuellen 4-h-Fenster bereits verbraucht (eigene Käufe + offene Angebote) */
+  limitUsed: number;
+  /** Noch verfügbares Limit; null = Limit unbekannt */
+  limitLeft: number | null;
   latestHigh: number | null;
   latestLow: number | null;
   highTime: number | null;
@@ -89,7 +95,9 @@ export function buildCandidate(meta: ItemMeta, row: MarketRow, ctx: ScannerConte
   const roi = netMargin != null && estBuy != null && estBuy > 0 ? netMargin / estBuy : null;
 
   const qtyByCapital = estBuy != null && estBuy > 0 ? Math.floor(Math.max(0, ctx.capital) / estBuy) : 0;
-  const qty = meta.limit != null ? Math.min(qtyByCapital, meta.limit) : qtyByCapital;
+  const limitUsed = ctx.limitUsed?.get(meta.id) ?? 0;
+  const limitLeft = meta.limit != null ? Math.max(0, meta.limit - limitUsed) : null;
+  const qty = limitLeft != null ? Math.min(qtyByCapital, limitLeft) : qtyByCapital;
   const capitalRequired = estBuy != null ? qty * estBuy : null;
   const profitAtCapital = netMargin != null ? netMargin * qty : null;
   const potentialPerLimit = netMargin != null && meta.limit != null ? netMargin * meta.limit : null;
@@ -120,6 +128,8 @@ export function buildCandidate(meta: ItemMeta, row: MarketRow, ctx: ScannerConte
     members: meta.members,
     category: categorize(meta.name),
     limit: meta.limit,
+    limitUsed,
+    limitLeft,
     latestHigh: row.high,
     latestLow: row.low,
     highTime: row.highTime,
@@ -208,11 +218,14 @@ export function rankCandidate(c: FlipCandidate): { score: number; reasons: Reaso
   if (c.risk.coverage == null) reasons.push({ tone: "negative", text: "Trade volume not available." });
   if (c.quality.ageSec != null && c.quality.freshness < 15) reasons.push({ tone: "negative", text: "Stale price observations." });
   if (c.risk.components.volatility >= 20) reasons.push({ tone: "negative", text: "Strongly fluctuating price (24 h)." });
-  if (c.limit != null && c.qtyByCapital > c.limit) reasons.push({ tone: "neutral", text: `Limited buy limit (${c.limit} / 4 h).` });
+  if (c.limit != null && c.limitUsed > 0 && c.limitLeft != null && c.limitLeft > 0)
+    reasons.push({ tone: "neutral", text: `Buy limit partly used: ${c.limitLeft.toLocaleString("de-CH")} of ${c.limit.toLocaleString("de-CH")} left.` });
+  else if (c.limit != null && c.qtyByCapital > c.limit) reasons.push({ tone: "neutral", text: `Limited buy limit (${c.limit} / 4 h).` });
   if (c.limit == null) reasons.push({ tone: "neutral", text: "Buy limit not available." });
   if (c.quality.score < 50) reasons.push({ tone: "negative", text: "Low data quality." });
   if (c.taxExempt) reasons.push({ tone: "positive", text: "Tax-free item." });
-  if (c.qty === 0) reasons.push({ tone: "negative", text: "Not enough capital for 1 item." });
+  if (c.limitLeft === 0) reasons.push({ tone: "negative", text: "Buy limit used up – resets within 4 h of your first buy." });
+  else if (c.qty === 0) reasons.push({ tone: "negative", text: "Not enough capital for 1 item." });
   return { score, reasons };
 }
 
