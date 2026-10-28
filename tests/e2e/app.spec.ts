@@ -423,3 +423,120 @@ test("30-Tage-Abgleich: Grundlinie geladen, Preisspitze markiert, Top 10 zeigt 3
   await expect(page.getByTestId("vol-flag-erratic")).toHaveAttribute("aria-pressed", "true");
   await expect(coal).toBeVisible();
 });
+
+async function seedLimiter(page: Page, limiter: { count: number; challenge: { answer: string; guesses: string[] } | null }) {
+  await page.evaluate((l) => {
+    localStorage.setItem("osrs-ge-flipper:settings:v1", JSON.stringify({ requestLimiter: { enabled: true, requestsPerPuzzle: 10 } }));
+    localStorage.setItem("osrs-ge-flipper:limiter:v1", JSON.stringify(l));
+  }, limiter);
+  await page.reload();
+}
+
+test("Anfrage-Limiter: Wordle hält Anfragen an, bis es gelöst ist", async ({ page }) => {
+  await openApp(page);
+  await seedLimiter(page, { count: 10, challenge: { answer: "RUNES", guesses: [] } });
+  const gate = page.getByTestId("wordle-gate");
+  await expect(gate).toBeVisible();
+  // nicht schliessbar
+  await page.keyboard.press("Escape");
+  await expect(gate).toBeVisible();
+
+  // zu kurz → Hinweis, zählt nicht
+  await page.keyboard.type("RUN");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("wordle-message")).toHaveText("Not enough letters");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Backspace");
+
+  // physische Tastatur: SNORE → S, N, R, E gelb, O rot
+  await page.keyboard.type("SNORE");
+  await page.keyboard.press("Enter");
+  const states = (r: number) => Promise.all([0, 1, 2, 3, 4].map((c) => page.getByTestId(`wordle-tile-${r}-${c}`).getAttribute("data-state")));
+  expect(await states(0)).toEqual(["present", "present", "miss", "present", "present"]);
+  await expect(page.getByTestId("wordle-key-O")).toHaveAttribute("data-state", "miss");
+
+  // Bildschirmtastatur: TUNES → T rot, Rest grün
+  for (const k of "TUNES") await page.getByTestId(`wordle-key-${k}`).click();
+  await page.getByTestId("wordle-enter").click();
+  expect(await states(1)).toEqual(["miss", "hit", "hit", "hit", "hit"]);
+
+  await page.keyboard.type("RUNES");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("wordle-message")).toContainText("Solved in 3/6");
+  await page.getByTestId("wordle-continue").click();
+  await expect(gate).toBeHidden();
+  // Anfragen laufen weiter, Zähler neu
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
+  await expect(page.getByTestId("limiter-status")).toContainText(/of 10 requests used/);
+  await page.reload();
+  await expect(gate).toBeHidden();
+});
+
+test("Anfrage-Limiter: nach 6 Fehlversuchen gibt es ein neues Wort", async ({ page }) => {
+  await openApp(page);
+  await seedLimiter(page, { count: 10, challenge: { answer: "RUNES", guesses: ["CRANE", "CRANE", "CRANE", "CRANE", "CRANE"] } });
+  await expect(page.getByTestId("wordle-gate")).toBeVisible();
+  await page.keyboard.type("BUILT");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("wordle-answer")).toHaveText("RUNES");
+  await page.getByTestId("wordle-new").click();
+  await expect(page.getByTestId("wordle-tile-0-0")).toHaveAttribute("data-state", "empty");
+  await expect(page.getByTestId("wordle-gate")).toBeVisible();
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("osrs-ge-flipper:limiter:v1") ?? "{}"));
+  expect(stored.challenge.guesses).toEqual([]);
+  expect(stored.challenge.answer).not.toBe("RUNES");
+});
+
+test("Anfrage-Limiter: in den Einstellungen abschaltbar", async ({ page }) => {
+  await openApp(page, "/settings");
+  await seedLimiter(page, { count: 0, challenge: null });
+  await expect(page.getByTestId("limiter-status")).toBeVisible();
+  await page.getByTestId("limiter-enabled").uncheck();
+  await expect(page.getByTestId("limiter-status")).toBeHidden();
+  await page.evaluate(() => localStorage.setItem("osrs-ge-flipper:limiter:v1", JSON.stringify({ count: 1000, challenge: null })));
+  await page.reload();
+  await page.getByTestId("global-search").click();
+  await page.getByTestId("search-input").fill("whip");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("item-title")).toHaveText("Abyssal whip");
+  await expect(page.getByTestId("wordle-gate")).toBeHidden();
+});
+
+test("Anfrage-Limiter: Tipps und Ausweg über die Einstellungen", async ({ page }) => {
+  await openApp(page);
+  await seedLimiter(page, { count: 10, challenge: { answer: "RUNES", guesses: [] } });
+  const gate = page.getByTestId("wordle-gate");
+  await expect(gate).toBeVisible();
+
+  // zwei Tipps verraten je einen Buchstaben am richtigen Platz
+  await page.getByTestId("wordle-hint").click();
+  await expect(page.getByTestId("wordle-hint")).toContainText("1 left");
+  await page.getByTestId("wordle-hint").click();
+  await expect(page.getByTestId("wordle-hint")).toBeDisabled();
+  const revealed: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const t = (await page.getByTestId(`wordle-hint-${i}`).textContent()) ?? "";
+    if (t !== "?") {
+      expect(t).toBe("RUNES"[i]);
+      revealed.push(t);
+    }
+  }
+  expect(revealed).toHaveLength(2);
+
+  // Einstellungen sind trotz Rätsel erreichbar, andere Seiten nicht
+  await page.getByTestId("wordle-settings-link").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+  await expect(gate).toBeHidden();
+  await expect(page.getByTestId("limiter-paused")).toBeVisible();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Dashboard" }).click();
+  await expect(gate).toBeVisible();
+  await expect(page.getByTestId("wordle-hint")).toBeDisabled(); // Tipps bleiben verbraucht
+
+  // abschalten → Rätsel verworfen, Daten laufen wieder
+  await page.getByTestId("wordle-settings-link").click();
+  await page.getByTestId("limiter-enabled").uncheck();
+  await expect(page.getByTestId("limiter-paused")).toBeHidden();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Dashboard" }).click();
+  await expect(gate).toBeHidden();
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("osrs-ge-flipper:limiter:v1") ?? "{}"));
+  expect(stored.challenge).toBeNull();
+});

@@ -66,6 +66,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict (`noUnchecke
 8. **Ganze App auf Englisch.** Interne Werte bleiben deutsch, damit gespeicherte Daten gültig bleiben (Trade-Status `offen/teilweise/geschlossen`, Risiko/Qualität `niedrig/mittel/hoch/unzureichend`, Dateiname `osrs-ge-flipper-daten.json`) – Anzeige über Label-Maps (`LEVEL_LABEL`, `STATUS_LABEL`). Code-Kommentare bleiben deutsch.
 9. **Kaufchargen ohne Gebühren-Feld** (gibt es im GE nicht); beim Verkauf bleibt das optionale Feld für die tatsächliche Steuer.
 10. **Scanner/Top 10 gegen die letzten 30 Tage absichern** (Items, die regelmässig ausschlagen oder fallen, sollen nicht als gute Flips erscheinen) → `docs/03-methodik.md` Abschnitt 6a. Ausgeschlossene Items nicht verstecken, sondern im Tab **Volatile** mit Grund zeigen (Nutzer entscheidet selbst).
+11. **Anfrage-Limiter mit Wordle** (`src/state/limiter.ts`, `src/lib/wordle/`, `wordle-gate.tsx`): `getJson` in `src/hooks/market.ts` ruft `acquireRequest` auf; nach `requestsPerPuzzle` Anfragen (Standard 30) warten alle weiteren, bis das Wordle gelöst ist (6 Versuche, grün/gelb/rot, bei Niederlage neues Wort, 2 Tipps pro Wort verraten je einen Buchstaben). Auf `/settings` wird das Rätsel nicht angezeigt (Link im Rätsel), damit man den Limiter abschalten kann – Abschalten verwirft das offene Rätsel. Zähler + Rätsel in localStorage. Rein clientseitig, in den Einstellungen abschaltbar. Geratene Wörter werden nicht gegen ein Wörterbuch geprüft.
 
 ## Bekannte Grenzen / Ideen
 

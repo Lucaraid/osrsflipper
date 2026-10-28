@@ -4,11 +4,13 @@ import { useMemo } from "react";
 import type { HistoryResponse, ItemMeta, ItemsResponse, Lookback, MarketRow, MarketSnapshot, TimeseriesResponse } from "@/lib/market/types";
 import { buildIndex } from "@/lib/search/search";
 import { buildCandidates, MIN_HISTORY_DAYS_LOADED, type FlipCandidate } from "@/lib/analysis/scanner";
+import { acquireRequest } from "@/state/limiter";
 import { useSettings } from "@/state/settings";
 import { useBuyLimits } from "./buy-limits";
 import { useNow } from "./use-now";
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+  await acquireRequest(signal);
   const res = await fetch(url, { signal });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;

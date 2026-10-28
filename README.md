@@ -35,7 +35,7 @@ Datenbasierter Trading-Assistent für den **Old School RuneScape Grand Exchange*
 | **Flip-Historie** | Speicherung wahlweise in einem **Ordner deiner Wahl** auf dem eigenen Computer (`osrs-ge-flipper-daten.json` + `trades.csv` für Excel; Chrome/Edge). Trades mit mehreren Kaufchargen, Teilverkäufen, Gebühren, offenen Kaufangeboten, Notizen und Änderungshistorie. Gewinne nach FIFO, Überverkäufe werden blockiert. Filter nach Item, Status, Ergebnis und Datum. **Import aus RuneLite** (CSV-Export des Plugins Flipping Utilities) mit Vorschau; erneuter Import ergänzt nur Neues. |
 | **Portfolio** | Kapitalbuchungen und manueller Abgleich, Cash/Reserve/Verfügbar/Gebunden ohne Doppelzählung, offene Positionen mit geschätztem Marktwert, Kapitalverteilung, Positionsregeln mit Warnungen (inkl. GE-Slots). |
 | **Watchlist** | Favoriten, Notizen, Zielpreise, Zielmarge und Ziel-ROI. |
-| **Einstellungen** | Hell (Pergament-Braun wie das OSRS Wiki) / Dunkel, Standardkapital, Über-/Unterbieten, GE-Slots, JSON-Export/-Import, Daten löschen. |
+| **Einstellungen** | Hell (Pergament-Braun wie das OSRS Wiki) / Dunkel, Standardkapital, Über-/Unterbieten, GE-Slots, **Anfrage-Limiter** (nach x Anfragen an die Markt-API pausieren die Live-Daten, bis ein Wordle gelöst ist; abschaltbar), JSON-Export/-Import, Daten löschen. |
 
 ## Schnellstart
 
