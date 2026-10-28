@@ -338,3 +338,205 @@ test("App-Update: Link ausgeblendet, wenn nicht verfügbar", async ({ page }) =>
   await expect(page.getByText("Not an official Jagex product.")).toBeVisible();
   await expect(page.getByTestId("app-update-link")).toHaveCount(0);
 });
+
+test("Kauflimit-Tracker: Kauf erscheint auf Dashboard und Item-Seite mit Restlimit", async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByTestId("buy-limits-card")).toContainText("No buy limits in use");
+
+  await createTrade(page, false); // 10 × Abyssal whip (Limit 70), Kaufzeitpunkt = jetzt
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Dashboard" }).click();
+  const row = page.getByTestId("buy-limit-row");
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText("Abyssal whip");
+  await expect(row).toContainText("60 left");
+  await expect(row).toContainText(/10 \/ 70 used · resets in 4([.,]0)? h/);
+
+  await row.getByRole("link", { name: "Abyssal whip" }).click();
+  await expect(page.getByTestId("item-limit-usage")).toHaveText(/10 \/ 70 used · resets in/);
+});
+
+/** Datum im Format des Flipping-Utilities-Exports (Ortszeit, 12 h) */
+function fuDate(msAgo: number) {
+  const d = new Date(Date.now() - msAgo);
+  const p = (n: number) => String(n).padStart(2, "0");
+  const h = d.getHours() % 12 || 12;
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(h)}:${p(d.getMinutes())} ${d.getHours() < 12 ? "AM" : "PM"}`;
+}
+
+test("Import aus RuneLite (Flipping Utilities): Vorschau, Import, erneuter Import erkennt Duplikate", async ({ page }) => {
+  const H = 3_600_000;
+  const csv = [
+    "# Displaying trades for selected time interval: All",
+    "name,date,quantity,price,state",
+    `Abyssal whip,${fuDate(5 * H)},2,1000000,BOUGHT`,
+    `Abyssal whip,${fuDate(4 * H)},2,1100000,SOLD`,
+    "# Total profit: 200000",
+    "",
+    `Old school bond,${fuDate(3 * H)},1,9000000,BOUGHT`,
+    `Not a real item,${fuDate(2 * H)},5,100,SOLD`,
+    `Abyssal whip,${fuDate(1 * H)},1,1200000,SOLD`,
+  ].join("\n");
+  const file = { name: "Accountwide.csv", mimeType: "text/csv", buffer: Buffer.from(csv) };
+
+  await openApp(page, "/history");
+  await page.getByTestId("fu-import").click();
+  await page.getByTestId("fu-file").setInputFiles(file);
+  await expect(page.getByTestId("fu-summary")).toContainText("2 trades · 1 finished · 1 still open");
+  await expect(page.getByTestId("fu-dialog")).toContainText("Skipped 1 sell (1 item)");
+  await expect(page.getByTestId("fu-unknown")).toContainText("1 item name not found");
+  await expect(page.getByTestId("fu-row")).toHaveCount(2);
+  await page.getByTestId("fu-confirm").click();
+  await expect(page.getByTestId("fu-dialog")).toHaveCount(0);
+
+  await expect(page.getByTestId("trade-row")).toHaveCount(2);
+  // 2 × (1'100'000 − 22'000 Steuer − 1'000'000) = 156'000
+  await expect(page.getByTestId("trade-row").filter({ hasText: "Abyssal whip" })).toContainText(/156.000/);
+
+  // dieselbe Datei nochmals: nichts Neues
+  await page.getByTestId("fu-import").click();
+  await page.getByTestId("fu-file").setInputFiles(file);
+  await expect(page.getByTestId("fu-summary")).toContainText("2 already imported (hidden)");
+  await expect(page.getByTestId("fu-confirm")).toBeDisabled();
+});
+
+test("30-Tage-Abgleich: Grundlinie geladen, Preisspitze markiert, Top 10 zeigt 30-Tage-Zeile", async ({ page, request }) => {
+  const res = await request.get("/api/history");
+  expect(res.status()).toBe(200);
+  const h = await res.json();
+  expect(h.meta.source).toBe("fixtures");
+  expect(h.meta.daysLoaded).toBe(30);
+  expect(h.items["4151"].days).toBe(30);
+  // Testitem 4151 hat in der letzten Stunde einen synthetischen Anstieg von 25 %
+  await openApp(page, "/items/4151");
+  await expect(page.getByTestId("item-history-check")).toContainText("Price spike");
+  await openApp(page, "/top");
+  await expect(page.getByTestId("top-pick").first().getByTestId("history-summary")).toContainText("30 d:");
+  await expect(page.getByTestId("top-list")).not.toContainText("Abyssal whip");
+  // Sprunghaftes Item (Coal) fehlt in Standard, steht im Tab „Volatile“ mit Warnung
+  await expect(page.getByTestId("top-list")).not.toContainText("Coal");
+  await page.getByTestId("tab-volatile").click();
+  const coal = page.getByTestId("vol-list").getByTestId("top-pick").filter({ hasText: "Coal" });
+  await expect(coal.getByTestId("vol-flag")).toContainText("Erratic");
+  await expect(coal.getByTestId("vol-downside")).toContainText("typical daily swing");
+  // Filter nach Grund
+  await page.getByTestId("vol-flag-erratic").click();
+  await expect(page.getByTestId("vol-flag-erratic")).toHaveAttribute("aria-pressed", "true");
+  await expect(coal).toBeVisible();
+});
+
+async function seedLimiter(page: Page, limiter: { count: number; challenge: { answer: string; guesses: string[] } | null }) {
+  await page.evaluate((l) => {
+    localStorage.setItem("osrs-ge-flipper:settings:v1", JSON.stringify({ requestLimiter: { enabled: true, requestsPerPuzzle: 10 } }));
+    localStorage.setItem("osrs-ge-flipper:limiter:v1", JSON.stringify(l));
+  }, limiter);
+  await page.reload();
+}
+
+test("Anfrage-Limiter: Wordle hält Anfragen an, bis es gelöst ist", async ({ page }) => {
+  await openApp(page);
+  await seedLimiter(page, { count: 10, challenge: { answer: "RUNES", guesses: [] } });
+  const gate = page.getByTestId("wordle-gate");
+  await expect(gate).toBeVisible();
+  // nicht schliessbar
+  await page.keyboard.press("Escape");
+  await expect(gate).toBeVisible();
+
+  // zu kurz → Hinweis, zählt nicht
+  await page.keyboard.type("RUN");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("wordle-message")).toHaveText("Not enough letters");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Backspace");
+
+  // physische Tastatur: SNORE → S, N, R, E gelb, O rot
+  await page.keyboard.type("SNORE");
+  await page.keyboard.press("Enter");
+  const states = (r: number) => Promise.all([0, 1, 2, 3, 4].map((c) => page.getByTestId(`wordle-tile-${r}-${c}`).getAttribute("data-state")));
+  expect(await states(0)).toEqual(["present", "present", "miss", "present", "present"]);
+  await expect(page.getByTestId("wordle-key-O")).toHaveAttribute("data-state", "miss");
+
+  // Bildschirmtastatur: TUNES → T rot, Rest grün
+  for (const k of "TUNES") await page.getByTestId(`wordle-key-${k}`).click();
+  await page.getByTestId("wordle-enter").click();
+  expect(await states(1)).toEqual(["miss", "hit", "hit", "hit", "hit"]);
+
+  await page.keyboard.type("RUNES");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("wordle-message")).toContainText("Solved in 3/6");
+  await page.getByTestId("wordle-continue").click();
+  await expect(gate).toBeHidden();
+  // Anfragen laufen weiter, Zähler neu
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
+  await expect(page.getByTestId("limiter-status")).toContainText(/of 10 requests used/);
+  await page.reload();
+  await expect(gate).toBeHidden();
+});
+
+test("Anfrage-Limiter: nach 6 Fehlversuchen gibt es ein neues Wort", async ({ page }) => {
+  await openApp(page);
+  await seedLimiter(page, { count: 10, challenge: { answer: "RUNES", guesses: ["CRANE", "CRANE", "CRANE", "CRANE", "CRANE"] } });
+  await expect(page.getByTestId("wordle-gate")).toBeVisible();
+  await page.keyboard.type("BUILT");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("wordle-answer")).toHaveText("RUNES");
+  await page.getByTestId("wordle-new").click();
+  await expect(page.getByTestId("wordle-tile-0-0")).toHaveAttribute("data-state", "empty");
+  await expect(page.getByTestId("wordle-gate")).toBeVisible();
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("osrs-ge-flipper:limiter:v1") ?? "{}"));
+  expect(stored.challenge.guesses).toEqual([]);
+  expect(stored.challenge.answer).not.toBe("RUNES");
+});
+
+test("Anfrage-Limiter: in den Einstellungen abschaltbar", async ({ page }) => {
+  await openApp(page, "/settings");
+  await seedLimiter(page, { count: 0, challenge: null });
+  await expect(page.getByTestId("limiter-status")).toBeVisible();
+  await page.getByTestId("limiter-enabled").uncheck();
+  await expect(page.getByTestId("limiter-status")).toBeHidden();
+  await page.evaluate(() => localStorage.setItem("osrs-ge-flipper:limiter:v1", JSON.stringify({ count: 1000, challenge: null })));
+  await page.reload();
+  await page.getByTestId("global-search").click();
+  await page.getByTestId("search-input").fill("whip");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("item-title")).toHaveText("Abyssal whip");
+  await expect(page.getByTestId("wordle-gate")).toBeHidden();
+});
+
+test("Anfrage-Limiter: Tipps und Ausweg über die Einstellungen", async ({ page }) => {
+  await openApp(page);
+  await seedLimiter(page, { count: 10, challenge: { answer: "RUNES", guesses: [] } });
+  const gate = page.getByTestId("wordle-gate");
+  await expect(gate).toBeVisible();
+
+  // zwei Tipps verraten je einen Buchstaben am richtigen Platz
+  await page.getByTestId("wordle-hint").click();
+  await expect(page.getByTestId("wordle-hint")).toContainText("1 left");
+  await page.getByTestId("wordle-hint").click();
+  await expect(page.getByTestId("wordle-hint")).toBeDisabled();
+  const revealed: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const t = (await page.getByTestId(`wordle-hint-${i}`).textContent()) ?? "";
+    if (t !== "?") {
+      expect(t).toBe("RUNES"[i]);
+      revealed.push(t);
+    }
+  }
+  expect(revealed).toHaveLength(2);
+
+  // Einstellungen sind trotz Rätsel erreichbar, andere Seiten nicht
+  await page.getByTestId("wordle-settings-link").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+  await expect(gate).toBeHidden();
+  await expect(page.getByTestId("limiter-paused")).toBeVisible();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Dashboard" }).click();
+  await expect(gate).toBeVisible();
+  await expect(page.getByTestId("wordle-hint")).toBeDisabled(); // Tipps bleiben verbraucht
+
+  // abschalten → Rätsel verworfen, Daten laufen wieder
+  await page.getByTestId("wordle-settings-link").click();
+  await page.getByTestId("limiter-enabled").uncheck();
+  await expect(page.getByTestId("limiter-paused")).toBeHidden();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Dashboard" }).click();
+  await expect(gate).toBeHidden();
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("osrs-ge-flipper:limiter:v1") ?? "{}"));
+  expect(stored.challenge).toBeNull();
+});

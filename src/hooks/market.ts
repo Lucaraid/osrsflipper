@@ -1,13 +1,16 @@
 "use client";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import type { ItemMeta, ItemsResponse, Lookback, MarketRow, MarketSnapshot, TimeseriesResponse } from "@/lib/market/types";
+import type { HistoryResponse, ItemMeta, ItemsResponse, Lookback, MarketRow, MarketSnapshot, TimeseriesResponse } from "@/lib/market/types";
 import { buildIndex } from "@/lib/search/search";
-import { buildCandidates, type FlipCandidate } from "@/lib/analysis/scanner";
+import { buildCandidates, MIN_HISTORY_DAYS_LOADED, type FlipCandidate } from "@/lib/analysis/scanner";
+import { acquireRequest } from "@/state/limiter";
 import { useSettings } from "@/state/settings";
+import { useBuyLimits } from "./buy-limits";
 import { useNow } from "./use-now";
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+  await acquireRequest(signal);
   const res = await fetch(url, { signal });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
@@ -41,6 +44,21 @@ export function useMarket() {
     refetchInterval: MARKET_REFRESH_MS,
     refetchIntervalInBackground: true, // nötig für lokale Alarme in Hintergrund-Tabs
     staleTime: 20_000,
+    placeholderData: keepPreviousData,
+    retry: 2,
+  });
+}
+
+/** 30-Tage-Grundlinie; solange der Server noch Tage nachlädt, wird häufiger nachgefragt. */
+export function useHistory() {
+  return useQuery({
+    queryKey: ["history"],
+    queryFn: ({ signal }) => getJson<HistoryResponse>("/api/history", signal),
+    staleTime: 10 * 60_000,
+    refetchInterval: (q) => {
+      const m = q.state.data?.meta;
+      return m && m.daysLoaded < m.daysExpected - 1 ? 15_000 : 30 * 60_000;
+    },
     placeholderData: keepPreviousData,
     retry: 2,
   });
@@ -83,18 +101,24 @@ export function useRowMap() {
 export function useCandidates(capitalOverride?: number): { candidates: FlipCandidate[]; isLoading: boolean; error: Error | null } {
   const items = useItems();
   const market = useMarket();
+  const history = useHistory();
   const settings = useSettings();
   const capital = capitalOverride ?? settings.defaultCapital;
   const now = useNow(30_000);
+  const { used } = useBuyLimits();
   const candidates = useMemo(() => {
     if (!items.data || !market.data) return [];
+    const h = history.data;
     return buildCandidates(items.data.items, market.data.rows, {
       nowSec: now / 1000,
       capital,
       priceOffset: settings.priceOffset,
       thresholds: settings.freshness,
       dayBlocksLoaded: market.data.meta.day.blocksLoaded,
+      limitUsed: used,
+      // Grundlinie erst ab 21 Tagen verwenden, sonst wären Median und Trend nicht belastbar
+      history: h && h.meta.daysLoaded >= MIN_HISTORY_DAYS_LOADED ? h.items : null,
     });
-  }, [items.data, market.data, now, capital, settings.priceOffset, settings.freshness]);
+  }, [items.data, market.data, history.data, now, capital, settings.priceOffset, settings.freshness, used]);
   return { candidates, isLoading: items.isLoading || market.isLoading, error: (items.error ?? market.error) as Error | null };
 }

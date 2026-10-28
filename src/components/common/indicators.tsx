@@ -75,6 +75,7 @@ export function RiskBadge({ r }: { r: RiskResult }) {
           <div className="text-muted">
             Volatility {r.components.volatility.toFixed(0)}/30 · Liquidity {r.components.liquidity.toFixed(0)}/30 · Spread {r.components.spread.toFixed(0)}/20 · Data {r.components.data.toFixed(0)}/20
           </div>
+          {r.raisedByHistory && <div className="mt-1 text-neg">Raised to high: flagged by the 30-day check (spike, crash, erratic price or little history).</div>}
           <div className="mt-1 text-muted">Coverage (24h volume ÷ quantity): {r.coverage == null ? NA : `${r.coverage.toFixed(1)}×`}</div>
         </div>
       }

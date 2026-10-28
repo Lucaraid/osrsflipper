@@ -12,11 +12,17 @@ import { TAX_RULES } from "@/lib/tax/rules";
 import { gp } from "@/lib/format";
 import { useDataStore } from "@/state/data";
 import { useSettings, useSettingsStore } from "@/state/settings";
+import { useLimiterStore } from "@/state/limiter";
 import { FolderSettingsCard } from "@/components/layout/folder-settings";
 import { toast } from "@/state/toasts";
 
+const LIMITER_STEPS = [10, 20, 30, 50, 100, 200];
+
 export default function SettingsPage() {
   const s = useSettings();
+  const limiterCount = useLimiterStore((x) => x.count);
+  const limiterPaused = useLimiterStore((x) => x.challenge != null);
+  const resetLimiter = useLimiterStore((x) => x.reset);
   const update = useSettingsStore((x) => x.update);
   const replace = useSettingsStore((x) => x.replace);
   const data = useDataStore();
@@ -75,6 +81,51 @@ export default function SettingsPage() {
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
               </Select>
             </Field>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader title="Request limiter (Wordle)" />
+          <CardBody className="space-y-3">
+            <p className="text-xs text-muted">
+              After a number of requests to the market API, live data pauses until you solve a Wordle: 6 tries to find the 5-letter word. Green = right letter in the right spot, yellow = letter is in the word, red = not in the word. Fail and you get a new word.
+            </p>
+            {s.requestLimiter.enabled && limiterPaused && (
+              <div data-testid="limiter-paused">
+                <InfoNote tone="warn">Live data is paused – a Wordle is waiting. Turn the limiter off below, or open any other page to solve it.</InfoNote>
+              </div>
+            )}
+            <div className="grid grid-cols-2 items-end gap-3">
+              <label className="flex h-9 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={s.requestLimiter.enabled}
+                  onChange={(e) => {
+                    // Abschalten verwirft auch ein offenes Rätsel, sonst taucht es beim Wiedereinschalten sofort auf
+                    if (!e.target.checked) resetLimiter();
+                    update({ requestLimiter: { ...s.requestLimiter, enabled: e.target.checked } });
+                  }}
+                  data-testid="limiter-enabled"
+                />{" "}
+                Enable request limiter
+              </label>
+              <Field label="Requests per puzzle">
+                <Select
+                  value={s.requestLimiter.requestsPerPuzzle}
+                  onChange={(e) => update({ requestLimiter: { ...s.requestLimiter, requestsPerPuzzle: Number(e.target.value) } })}
+                  disabled={!s.requestLimiter.enabled}
+                  aria-label="Requests per puzzle"
+                  data-testid="limiter-threshold"
+                >
+                  {[...new Set([...LIMITER_STEPS, s.requestLimiter.requestsPerPuzzle])].sort((a, b) => a - b).map((n) => <option key={n} value={n}>{n}</option>)}
+                </Select>
+              </Field>
+            </div>
+            {s.requestLimiter.enabled && (
+              <p className="text-xs text-faint" data-testid="limiter-status">
+                {Math.min(limiterCount, s.requestLimiter.requestsPerPuzzle)} of {s.requestLimiter.requestsPerPuzzle} requests used until the next puzzle.
+              </p>
+            )}
           </CardBody>
         </Card>
 

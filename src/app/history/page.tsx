@@ -6,6 +6,7 @@ import { Confirm } from "@/components/common/confirm";
 import { EmptyState, Est, Gp, PageHeader, Pct, Stat } from "@/components/common/indicators";
 import { ItemIcon } from "@/components/common/item-icon";
 import { emptyTrade, TradeEditor, tradeWithSale } from "@/components/trades/trade-editor";
+import { ImportFlippingUtilities } from "@/components/trades/import-flipping-utilities";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -129,9 +130,12 @@ export default function HistoryPage() {
         title="Flip History"
         description="All logged trades with partial sales, multiple buys and FIFO profit. Data is only stored locally."
         actions={
-          <Button variant="primary" onClick={() => setEditing({ draft: emptyTrade() })} data-testid="new-trade">
-            <Plus /> Log trade
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <ImportFlippingUtilities />
+            <Button variant="primary" onClick={() => setEditing({ draft: emptyTrade() })} data-testid="new-trade">
+              <Plus /> Log trade
+            </Button>
+          </div>
         }
       />
 

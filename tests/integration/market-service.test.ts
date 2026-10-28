@@ -116,11 +116,14 @@ class FakeSource implements MarketSource {
   readonly kind = "fixtures" as const;
   calls: Record<string, number> = {};
   failLatest = false;
+  /** Tage (Mitternacht UTC), die noch nicht veröffentlicht sind → leere Antwort */
+  missingDays = new Set<number>();
   private hit(k: string) { this.calls[k] = (this.calls[k] ?? 0) + 1; }
   async mapping() { this.hit("mapping"); return MAPPING; }
   async latest() { this.hit("latest"); if (this.failLatest) throw new Error("API down"); return LATEST; }
   async fiveMin() { this.hit("5m"); return BLOCK(7200 - 300); }
   async oneHour(ts?: number) { this.hit(ts ? "1h:ts" : "1h"); return BLOCK(ts ?? 86400); }
+  async oneDay(ts: number) { this.hit("24h"); return this.missingDays.has(ts) ? { data: {} } : BLOCK(ts); }
   async timeseries(id: number) { this.hit("ts"); return { data: [{ timestamp: 1, avgHighPrice: 5, avgLowPrice: 4, highPriceVolume: 1, lowPriceVolume: 1 }], itemId: id, timestep: 300, startTimestamp: 1, endTimestamp: 301 }; }
 }
 
@@ -155,6 +158,26 @@ describe("MarketService", () => {
     src.failLatest = true;
     const svc = new MarketService(src, new TtlCache(), Date.now, 50);
     await expect(svc.getSnapshot()).rejects.toThrow(/Market data unavailable/);
+  });
+  it("30-Tage-Grundlinie: lädt 30 Tagesblöcke, cached sie und cached unveröffentlichte Tage nicht", async () => {
+    let now = Date.UTC(2026, 9, 27, 12);
+    const src = new FakeSource();
+    const svc = new MarketService(src, new TtlCache(200, () => now), () => now, 1_000, 1_000);
+    const days = svc.historyDays();
+    expect(days).toHaveLength(30);
+    expect(days[29]).toBe(Date.UTC(2026, 9, 26) / 1000);
+    src.missingDays.add(days[29] as number);
+    const h = await svc.getHistory();
+    expect(h.meta.daysLoaded).toBe(29);
+    expect(h.meta.error).toBeNull(); // fehlender jüngster Tag ist normal
+    expect(h.items["4151"]?.days).toBe(29);
+    expect(h.items["4151"]?.median30).toBeCloseTo((1100.5 + 1000.25) / 2, 1);
+    expect(src.calls["24h"]).toBe(30);
+    src.missingDays.clear();
+    now += 60_000;
+    const h2 = await svc.getHistory();
+    expect(h2.meta.daysLoaded).toBe(30);
+    expect(src.calls["24h"]).toBe(31); // nur der fehlende Tag wird nachgeladen
   });
   it("Items und Zeitreihen", async () => {
     const svc = new MarketService(new FakeSource());

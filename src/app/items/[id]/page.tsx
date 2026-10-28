@@ -5,10 +5,15 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { TimeChart, type ChartSeries } from "@/components/charts/time-chart";
 import { Age, EmptyState, ErrorNote, Est, Gp, InfoNote, Pct, QualityBadge, RiskBadge, Skeleton, Stat } from "@/components/common/indicators";
+import { HistorySummary } from "@/components/common/history-check";
+import { historyReasons } from "@/lib/analysis/scanner";
+import { cn } from "@/lib/utils";
 import { ItemIcon } from "@/components/common/item-icon";
 import { WatchButton } from "@/components/common/watch-button";
 import { ProfitCalculator } from "@/components/items/profit-calculator";
 import { emptyTrade, findOpenTrade, prepareTrade, TradeEditor } from "@/components/trades/trade-editor";
+import { limitStatusText } from "@/components/trades/buy-limits";
+import { useBuyLimits } from "@/hooks/buy-limits";
 import { useCalcStore } from "@/state/calc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +51,7 @@ export default function ItemDetailPage() {
   const meta = items.data?.items.find((i) => i.id === id);
   const row = market.data?.rows.find((r) => r.id === id);
   const { candidates } = useCandidates();
+  const limits = useBuyLimits();
   const cand = candidates.find((c) => c.id === id);
   const [lookback, setLookback] = useState<Lookback>("24h");
   const ts = useTimeseries(valid ? id : null, lookback);
@@ -100,6 +106,11 @@ export default function ItemDetailPage() {
             <Badge>{meta.members ? "Members" : "F2P"}</Badge>
             {cand?.taxExempt && <Badge tone="pos">tax-free</Badge>}
             <span>Limit: {meta.limit != null ? `${gp(meta.limit)} / 4 h` : "Not available"}</span>
+            {limits.usage.has(meta.id) && (
+              <span className={cn("font-medium", cand?.limitLeft === 0 ? "text-neg" : "text-warn")} data-testid="item-limit-usage">
+                ({limitStatusText(meta.limit, limits.usage.get(meta.id), limits.now)})
+              </span>
+            )}
             {meta.highalch != null && <span>· High Alch: {gp(meta.highalch)}</span>}
           </div>
           {meta.examine && <p className="mt-0.5 text-xs italic text-faint">“{meta.examine}”</p>}
@@ -148,6 +159,18 @@ export default function ItemDetailPage() {
           {cand && cand.quality.notes[0] && <div className="mt-1 truncate text-[11px] text-faint" title={cand.quality.notes.join(" ")}>{cand.quality.notes[0]}</div>}
         </div>
       </div>
+
+      {cand?.histCheck && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" data-testid="item-history-check">
+          <HistorySummary c={cand} className="text-muted" />
+          {historyReasons(cand).map((r) => (
+            <span key={r.text} className={cn(r.tone === "positive" ? "text-pos" : r.tone === "negative" ? "text-neg" : "text-muted")}>
+              {r.tone === "positive" ? "+ " : r.tone === "negative" ? "− " : "· "}
+              {r.text}
+            </span>
+          ))}
+        </div>
+      )}
 
       <Card>
         <CardHeader

@@ -68,6 +68,13 @@ export async function put<S extends StoreName>(store: S, value: FlipperDB[S]["va
   await db.put(store, value);
 }
 
+/** Mehrere Einträge in einer Transaktion speichern (z. B. Import). */
+export async function putMany<S extends StoreName>(store: S, values: FlipperDB[S]["value"][]): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction(store, "readwrite");
+  await Promise.all([...values.map((v) => tx.store.put(v)), tx.done]);
+}
+
 export async function remove<S extends StoreName>(store: S, key: FlipperDB[S]["key"]): Promise<void> {
   const db = await getDb();
   await db.delete(store, key);

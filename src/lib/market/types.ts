@@ -108,6 +108,48 @@ export interface DayAgg {
   cvPrior: number | null;
 }
 
+/**
+ * 30-Tage-Grundlinie je Item aus bis zu 30 abgeschlossenen Tagesblöcken (`/24h?timestamp=`).
+ * Preise sind Tagesmittel ((Ø Instant-Buy + Ø Instant-Sell) / 2). Lücken werden nicht interpoliert.
+ */
+export interface MonthAgg {
+  /** Anzahl Tage mit Handel */
+  days: number;
+  /** Median der Tagesmittel über 30 bzw. 7 Tage */
+  median30: number;
+  median7: number | null;
+  /** Robuste relative Streuung der Tagesmittel um den 30-Tage-Median (1,4826 × MAD, mind. 1 % bzw. 2 gp) */
+  noise: number;
+  /** Standardabweichung der täglichen Log-Renditen (null bei < 10 Renditen) */
+  dailyVol: number | null;
+  /** Trend der letzten 7 Tage: Steigung der Log-Preise pro Tag (null bei < 5 Tagen) */
+  trend7: number | null;
+  /** Veränderung erster → letzter Tag mit Handel */
+  change30: number | null;
+  /** Tage, deren Mittel deutlich über dem 30-Tage-Median lag (Ausreisser nach oben) */
+  spikeDays: number;
+  /** Median des Tagesspreads (Ø Instant-Buy − Ø Instant-Sell) */
+  spread: number | null;
+  /** Median des Tagesvolumens der schwächeren Seite (nur Tage mit vollständigen Jagex-Daten) */
+  volWeaker: number | null;
+  min: number;
+  max: number;
+}
+
+export interface HistoryResponse {
+  meta: {
+    source: DataSourceKind;
+    generatedAt: number;
+    daysLoaded: number;
+    daysExpected: number;
+    /** Beginn des ältesten / Ende des jüngsten geladenen Tages (Unix-Sekunden) */
+    from: number | null;
+    to: number | null;
+    error: string | null;
+  };
+  items: Record<string, MonthAgg>;
+}
+
 export interface MarketRow {
   id: number;
   high: number | null;

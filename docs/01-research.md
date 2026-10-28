@@ -18,11 +18,12 @@ Base-URL: `https://prices.runescape.wiki/api/v2/osrs`
 | `/mapping` | – | `[{ examine, id, members, lowalch, limit, value, highalch, icon, name }]` – `limit` = GE-Kauflimit (4 h), `icon` = Wiki-Dateiname | ✅ laut Doku, Beispielobjekt |
 | `/5m` | `timestamp` optional | `{ data: { [id]: { avgHighPrice, highPriceVolume, avgLowPrice, lowPriceVolume } }, timestamp }` – Mittelwerte & Stückzahlen im 5‑min-Block | ✅ Antwort geprüft |
 | `/1h` | `timestamp` optional | wie `/5m`, 1‑h-Block | ✅ laut Doku (gleiches Format) |
+| `/6h`, `/24h` | `timestamp` optional (muss auf Blockgrenze fallen, sonst leere Antwort) | wie `/5m`, 6‑h- bzw. Tagesblock (00:00–24:00 UTC) | ✅ Antwort geprüft 27.10.2026 – ohne `timestamp` liefert `/24h` den Tag von vorgestern, daher immer explizit anfragen |
 | `/timeseries` | `id`, `lookback` ∈ `6h, 24h, 7d, 30d, 6m, 1y` | `{ data: [{ timestamp, avgHighPrice, avgLowPrice, highPriceVolume, lowPriceVolume }], itemId, startTimestamp, endTimestamp, timestep }` | ✅ Antwort geprüft (`24h` → 72 Punkte à 300 s) |
 
 Hinweise aus der Doku:
 
-- Es gibt **keinen** `/24h`-Endpunkt in v2.
+- Korrektur 27.10.2026: Entgegen der früheren Annahme existieren `/6h` und `/24h` in v2 (nicht in der Doku). Die App nutzt `/24h` für die 30-Tage-Grundlinie; das rollende 24h-Fenster kommt weiterhin aus 24 × `/1h`.
 - Der `timestep` von `/timeseries` ist **nicht garantiert** – wir lesen ihn immer aus der Antwort und zeigen ihn an.
 - v2-Durchschnitte haben bis zu 2 Nachkommastellen. Preise können > 2³¹ sein → JS `number` (53 Bit) reicht.
 - Werte in `/5m`/`/1h`/`/timeseries` können `null` sein, wenn im Block kein Handel stattfand → wird als Datenlücke behandelt, nie interpoliert.

@@ -5,10 +5,13 @@ import type { MarketRow } from "../market/types";
  *
  * | Komponente   | max | Grundlage                                                                         |
  * |--------------|-----|-----------------------------------------------------------------------------------|
- * | Volatilität  | 30  | Variationskoeffizient der stündlichen Durchschnittspreise (24 h); 0 % → 0, ≥ 5 % → 30; unbekannt → 15 |
- * | Liquidität   | 30  | 24h-Volumen der schwächeren Seite ÷ geplante Stückzahl; ≥ 5× → 0, ≤ 0,5× → 30; unbekannt → 30 |
+ * | Volatilität  | 30  | CV der Stundenpreise (24 h; ≥ 5 % → voll) und tägliche Schwankung (30 d; ≥ 10 % → voll), je zur Hälfte; nur eine bekannt → diese allein; keine → 15 |
+ * | Liquidität   | 30  | Volumen der schwächeren Seite (min. aus 24 h und normalem Tag der letzten 30 d) ÷ geplante Stückzahl; ≥ 5× → 0, ≤ 0,5× → 30; unbekannt → 30 |
  * | Spread       | 20  | (Instant-Buy − Instant-Sell) ÷ Instant-Sell; ≤ 1 % → 0, ≥ 10 % → 20                |
  * | Datenqualität| 20  | (100 − Qualitätsscore) × 0,2                                                       |
+ *
+ * Schliesst der 30-Tage-Abgleich das Item aus den Top 10 aus (Spitze, Absturz, sprunghaft, wenig Historie),
+ * ist die Risikoklasse mindestens „hoch“ – unabhängig vom Score.
  */
 
 export type RiskClass = "niedrig" | "mittel" | "hoch";
@@ -17,8 +20,10 @@ export interface RiskResult {
   score: number;
   riskClass: RiskClass;
   components: { volatility: number; liquidity: number; spread: number; data: number };
-  /** Abdeckung: 24h-Volumen der schwächeren Seite / geplante Menge */
+  /** Abdeckung: Volumen der schwächeren Seite (24 h bzw. normaler Tag) / geplante Menge */
   coverage: number | null;
+  /** Klasse wegen des 30-Tage-Abgleichs auf „hoch“ angehoben */
+  raisedByHistory: boolean;
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -29,14 +34,26 @@ export function riskClass(score: number): RiskClass {
 
 export const RISK_ORDER: Record<RiskClass, number> = { niedrig: 0, mittel: 1, hoch: 2 };
 
-export function assessRisk(row: MarketRow, plannedQty: number, qualityScore: number): RiskResult {
+export interface RiskHistory {
+  /** Volumen der schwächeren Seite für die Mengenplanung (ersetzt das 24h-Volumen) */
+  volWeaker: number | null;
+  /** Tägliche Schwankung über 30 Tage */
+  dailyVol: number | null;
+  /** vom 30-Tage-Abgleich ausgeschlossen */
+  flagged?: boolean;
+}
+
+export function assessRisk(row: MarketRow, plannedQty: number, qualityScore: number, hist?: RiskHistory): RiskResult {
   const cv = row.d1?.cv ?? null;
-  const volatility = cv == null ? 15 : 30 * clamp01(cv / 0.05);
+  const dv = hist?.dailyVol ?? null;
+  const cvPart = cv == null ? null : clamp01(cv / 0.05);
+  const dvPart = dv == null ? null : clamp01(dv / 0.1);
+  const volatility = cvPart != null && dvPart != null ? 15 * cvPart + 15 * dvPart : cvPart != null ? 30 * cvPart : dvPart != null ? 30 * dvPart : 15;
 
   let coverage: number | null = null;
   let liquidity = 30;
-  if (row.d1 && plannedQty > 0) {
-    const weaker = Math.min(row.d1.volHigh, row.d1.volLow);
+  const weaker = hist ? hist.volWeaker : row.d1 ? Math.min(row.d1.volHigh, row.d1.volLow) : null;
+  if (weaker != null && plannedQty > 0) {
     coverage = weaker / plannedQty;
     // log-Skala zwischen 0,5× und 5×
     liquidity = coverage >= 5 ? 0 : coverage <= 0.5 ? 30 : 30 * (1 - Math.log10(coverage / 0.5));
@@ -50,5 +67,7 @@ export function assessRisk(row: MarketRow, plannedQty: number, qualityScore: num
 
   const data = (100 - Math.max(0, Math.min(100, qualityScore))) * 0.2;
   const score = Math.round(volatility + liquidity + spread + data);
-  return { score, riskClass: riskClass(score), components: { volatility, liquidity, spread, data }, coverage };
+  const cls = riskClass(score);
+  const raisedByHistory = !!hist?.flagged && cls !== "hoch";
+  return { score, riskClass: raisedByHistory ? "hoch" : cls, components: { volatility, liquidity, spread, data }, coverage, raisedByHistory };
 }

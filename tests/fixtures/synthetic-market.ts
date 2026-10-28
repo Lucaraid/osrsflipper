@@ -20,6 +20,7 @@ export const FIXTURE_CASES = {
   staleLatest: 1127, // letzte Beobachtung 3 h alt
   oneSided: 5295, // nur Instant-Buy-Seite vorhanden
   noVolume: 1777, // keine Handelsaktivität in 1h/5m
+  erratic: 453, // Tagespreise der letzten 30 Tage schwanken um ±30 %, aktuell normal (Tab „Volatile“)
 } as const;
 
 function rng(seed: number) {
@@ -54,6 +55,7 @@ function priceAt(id: number, tsSec: number, nowSec: number) {
   const wave = Math.sin((tsSec / 3600 + id) / 5) * 0.02;
   let p = base * (1 + wave);
   if (id === FIXTURE_CASES.spike && nowSec - tsSec < 3600) p *= 1.25;
+  if (id === FIXTURE_CASES.erratic && nowSec - tsSec > 86400) p *= Math.floor(tsSec / 86400) % 2 ? 1.3 : 0.75;
   return p;
 }
 
@@ -101,6 +103,13 @@ export function fixture1h(nowMs: number, timestamp?: number) {
   const now = Math.floor(nowMs / 1000);
   const latestBlock = now - (now % 3600) - 3600;
   return block(nowMs, timestamp ?? latestBlock, 3600);
+}
+
+/** Tagesblock (00:00–24:00 UTC) wie `/24h?timestamp=`; laufender Tag ist noch nicht verfügbar. */
+export function fixture24h(nowMs: number, timestamp: number) {
+  const now = Math.floor(nowMs / 1000);
+  if (timestamp % 86400 !== 0 || timestamp + 86400 > now) return { data: {} };
+  return block(nowMs, timestamp, 86400);
 }
 
 const LOOKBACK_STEPS: Record<string, [number, number]> = {

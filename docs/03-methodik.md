@@ -24,6 +24,7 @@ Es gibt kein öffentliches Orderbuch. Aus letzten Transaktionspreisen werden kei
 - 48 befreite Items als ID-Liste (`TAX_EXEMPT_ITEMS`), am 24.10.2026 gegen `/mapping` aufgelöst.
 - Steuer auf eine Menge = Steuer pro Stück × Menge (nicht auf den Gesamtbetrag).
 - Wurde bei einem eigenen Trade die tatsächliche Steuer erfasst, ersetzt sie die berechnete.
+- **Frühere Sätze** (`taxRulesAt`, nur für importierte historische Verkäufe): vor dem 09.12.2021 keine Steuer, 09.12.2021–28.05.2025 **1 %** (gleiche Obergrenze), danach die aktuellen Regeln. Für die 1-%-Periode gilt die aktuelle Ausnahmeliste (damals kürzer → für die 2025 neu befreiten Items leicht unterschätzt).
 
 Referenzfälle aus den Tests: 49 → 0 · 50 → 1 · 99 → 1 · 100 → 2 · 1'234'567 → 24'691 · 249'999'999 → 4'999'999 · 250'000'000 → 5'000'000 · Bond 9M → 0.
 
@@ -48,7 +49,7 @@ Eingaben werden auf ganze gp abgeschnitten und auf 1 … 2'147'483'647 begrenzt.
 
 - Gesch. Kauf = letzter Instant-Sell + Offset · gesch. Verkauf = letzter Instant-Buy − Offset (Offset einstellbar, Standard 1 gp).
 - Nettomarge = Verkauf − Steuer(Verkauf) − Kauf · ROI = Nettomarge ÷ Kauf.
-- **Konservative Marge:** Verkauf = min(gesch. Verkauf, Ø Instant-Buy 1h − Offset), Kauf = max(gesch. Kauf, Ø Instant-Sell 1h + Offset). Fehlt der 1h-Block, wird der 24h-Durchschnitt verwendet. So werden Margen erkannt, die nur durch einen einzelnen Ausreisser-Trade entstehen. Der Standardfilter „Nur plausible Margen“ blendet Items mit konservativer Marge ≤ 0 aus.
+- **Konservative Marge:** Verkauf = min(gesch. Verkauf, Ø Instant-Buy 1h − Offset), Kauf = max(gesch. Kauf, Ø Instant-Sell 1h + Offset). Fehlt der 1h-Block, wird der 24h-Durchschnitt verwendet. Mit 30-Tage-Grundlinie wird die Bruttomarge zusätzlich auf 2 × den normalen Tagesspread begrenzt und bei Abwärtstrend um die erwarteten Trendkosten gekürzt (Abschnitt 6a). So werden Margen erkannt, die nur durch einen einzelnen Ausreisser-Trade oder eine vorübergehend aufgerissene Spanne entstehen. Der Standardfilter „Nur plausible Margen“ blendet Items mit konservativer Marge ≤ 0 aus.
 - Menge = min(⌊Kapital × Allokation ÷ Kauf⌋, Limit). Unbekannte Limits werden nicht angenommen.
 - Kapitalanteil = Kapitalbedarf ÷ Kapital · Gewinn @ Kapital = Nettomarge × Menge · Potenzial/Limit = Nettomarge × Limit.
 
@@ -68,18 +69,49 @@ Stufen: ≥ 75 hoch · ≥ 50 mittel · ≥ 25 niedrig · darunter unzureichend.
 
 | Komponente | max | Regel |
 |---|---|---|
-| Volatilität | 30 | CV der stündlichen Mittelpreise (24 h): 0 % → 0 … ≥ 5 % → 30; unbekannt → 15 |
-| Liquidität | 30 | Abdeckung = 24h-Volumen der schwächeren Seite ÷ Menge; ≥ 5× → 0; ≤ 0,5× → 30; dazwischen log. |
+| Volatilität | 30 | je zur Hälfte: CV der stündlichen Mittelpreise (24 h; ≥ 5 % → voll) und tägliche Schwankung (30 d; ≥ 10 % → voll). Nur eines bekannt → dieses allein (30); keines → 15 |
+| Liquidität | 30 | Abdeckung = Volumen der schwächeren Seite ÷ Menge; ≥ 5× → 0; ≤ 0,5× → 30; dazwischen log. Volumen = min(24 h, normaler Tag = Median 30 d), ohne Grundlinie 24 h |
 | Spread | 20 | (Buy − Sell) ÷ Sell: ≤ 1 % → 0 … ≥ 10 % → 20 |
 | Daten | 20 | (100 − Qualität) × 0,2 |
 
 Klassen: < 30 niedrig · < 60 mittel · sonst hoch. Das Risiko ist eine Bewertung der Vergangenheit und keine Prognose.
 
+## 6a. 30-Tage-Abgleich (`history-check.ts`, Grundlinie `src/lib/market/history.ts`)
+
+Datenbasis: die letzten 30 abgeschlossenen Tage aus `/24h?timestamp=<Mitternacht UTC>` (Bulk, alle Items, je ca. 400 KB). Abgeschlossene Tage werden 32 Tage gecacht, d. h. nach dem ersten Laden kommt pro Tag nur ein Abruf dazu. Route `/api/history`, Client lädt alle 30 min (beim Nachladen alle 15 s). Der Abgleich startet ab 21 geladenen Tagen; vorher bzw. bei Ausfall gelten nur die 24h-Prüfungen (Hinweis in der UI).
+
+Je Item (Tagesmittel = (Ø Buy + Ø Sell)/2, Lücken nicht interpoliert):
+
+- Median 30 d und 7 d, **Streuung** = 1,4826 × MAD der Tagesmittel relativ zum Median (mind. 1 % bzw. 2 gp)
+- **Trend 7 d** = Steigung der Log-Tagesmittel (kleinste Quadrate, ≥ 5 Tage), **tägliche Schwankung** = Std.-Abw. der Log-Renditen (≥ 10 Renditen)
+- **Ausreisser-Tage** = Tage mit Mittel > Median × (1 + max(5 %, 4 × Streuung))
+- **Normaler Spread** = Median des Tagesspreads, **normales Volumen** = Median der schwächeren Seite (nur Tage ab 30.09.2026, vorher nur RuneLite-Daten)
+
+| Prüfung | Regel | Wirkung |
+|---|---|---|
+| Preisspitze | aktuelle Mitte (max. aus letzter Beobachtung und 1h-Mittel) > 3 × Streuung über dem 7-Tage-Median; bei Aufwärtstrend wird dieser um 3,5 Tage entlang des Trends fortgeschrieben (höchstens +2 %/Tag) | Top 10 ausgeschlossen, Score × 0,5 |
+| Wiederkehrende Spitzen | ≥ 3 Ausreisser-Tage | aktuell > 1,5 × Streuung erhöht → Top 10 ausgeschlossen, Score × 0,6; sonst Hinweis, Score × 0,85 |
+| Abwärtstrend | Trend < −1 %/Tag | Marge − Trend × 0,5 Tage × Kaufpreis, Score × 0,85 |
+| Absturz | Trend < −5 %/Tag | Top 10 ausgeschlossen, Score × 0,5 |
+| Sprunghaft | tägliche Schwankung > 25 % | Top 10 ausgeschlossen, Score × 0,6 |
+| Breiter Spread | aktueller Spread > 2 × normaler Spread | Bruttomarge ≤ 2 × normaler Spread |
+| Ausreisser-Volumen | 24h-Volumen > 3 × normales Volumen | Hinweis; Menge ohnehin nach min(24 h, normaler Tag) |
+| Wenig Historie | < 14 von 30 Tagen gehandelt | Top 10 ausgeschlossen, Score × 0,8 |
+
+Ausgeschlossene Items verschwinden nicht: Der Tab **Volatile** auf „Top 10 Buys“ zeigt genau die Items, die der Abgleich aus den Top 10 nimmt (gleiche Margen-, Qualitäts- und Volumenkriterien, eigene Einstellungen, bis 20 Einträge, Standard-Sortierung nach Gewinn), jeweils mit Grund und allen 30-Tage-Warnungen – zur manuellen Prüfung. Filter nach Grund (Chips mit Anzahl).
+
+**Verlustrisiko** (`downsideEstimate` in `top.ts`, Schätzung): Ausgangspunkt ist der Verkaufspreis zur konservativen Marge (kleinster Preis mit netto ≥ Kauf + Marge), nicht der letzte Instant-Buy. Szenarien: Preisspitze → Rückfall auf das 7-Tage-Niveau (÷ (1 + Abweichung)); Absturz → ein weiterer Tag im 7-Tage-Trend; sprunghaft → eine typische Tagesbewegung nach unten (× e^−Schwankung). Bei mehreren Gründen zählt der tiefste Preis; Verlust = Kauf − Netto-Verkauf nach Steuer (mind. 0) × Menge. Wenig Historie → keine Schätzung. Standard-Sortierung des Tabs: Gewinn ÷ Verlustrisiko.
+
+Vom Abgleich ausgeschlossene Items haben immer mindestens Risikoklasse „hoch“ (`raisedByHistory`), unabhängig vom Risikoscore.
+
+Der Historienfaktor ist das Produkt der Abschläge, mindestens 0,3. Kalibrierung am 27.10.2026 an ca. 700 liquiden Items (≥ 1'000 gp, ≥ 100 Stück/Tag, positive Marge): Spitze ≈ 4 %, wiederkehrende Spitzen ≈ 4 %, Absturz ≈ 5 %, sprunghaft ≈ 5 %, Spread > 2× ≈ 20 %. Gegenprobe gleichentags: Von 424 liquiden Kandidaten mit positiver Marge fielen 123 heraus (45 sprunghaft, 40 Spitze, 37 Absturz, 1 wenig Historie), überwiegend billige Items mit starken Tagesausschlägen.
+
 ## 7. Ranking (0–100)
 
 ```
-score = 100 × Plausibilitätsfaktor × Σ (Gewicht × Faktor)
+score = 100 × Plausibilitätsfaktor × Historienfaktor × Σ (Gewicht × Faktor)
 Plausibilitätsfaktor = 0,5 + 0,5 × Plausibilität/20
+Historienfaktor      = 0,3 … 1 aus dem 30-Tage-Abgleich (Abschnitt 6a); ohne Grundlinie 1
 ```
 
 | Faktor | Gewicht | Normierung |
@@ -121,11 +153,21 @@ Alle Strategien setzen voraus: positive Marge (letzte und konservative), Qualit�
 - Invariante (getestet): `Gesamtwert = Σ Kapital + Realisiert + Unrealisiert`.
 - Kapitalverlauf: ausschliesslich aus Transaktionen (Buchwert = Cash + Einstand), ohne Marktpreisschätzung.
 
+### Import aus RuneLite (Flipping Utilities, `src/lib/import/flipping-utilities.ts`)
+
+- CSV-Export des Plugins: `name,date,quantity,price,state`, Datum in Ortszeit, Preis pro Stück. `CANCELLED_BUY/SELL` = gefüllter Teil eines abgebrochenen Angebots, zählt wie ein Kauf/Verkauf (so ergibt sich auch der vom Plugin ausgewiesene Gewinn).
+- Item-Zuordnung über den exakten Namen im `/mapping` (Gross-/Kleinschreibung egal); unbekannte oder mehrdeutige Namen werden übersprungen und angezeigt.
+- Flips pro Item chronologisch: Kauf ohne Bestand startet einen Trade, Verkäufe bis Bestand 0 schliessen ihn. Verkäufe ohne GE-Kauf (Drops, Skilling) werden übersprungen. Zeilen derselben Minute behalten die CSV-Reihenfolge.
+- Steuer: Verkäufe vor dem 29.05.2025 erhalten die damals gültige Steuer als „tatsächliche Steuer“; neuere werden nach den aktuellen Regeln berechnet.
+- Erneuter Import: Käufe/Verkäufe mit gleichem Item, gleicher Minute, Menge und Preis gelten als vorhanden (auch manuell erfasste). Fehlende Zeilen ergänzen den bestehenden Trade; verteilen sich die Treffer auf mehrere Trades, wird nichts geändert („conflict“).
+- Vorauswahl: neue/ergänzte Flips; offene Positionen ohne Aktivität seit > 14 Tagen nicht (meist Verbrauchsmaterial). Standard-Zeitraum der Vorschau: 30 Tage.
+
 ## 12. Top 10 Käufe (`top.ts`)
 
 - Basis: Scanner-Kandidaten mit Kapital pro Flip (Standard: Gesamtkapital ÷ GE-Slots).
-- Voraussetzungen: positive Marge (letzte Beobachtung **und** mit Ø-Preisen der letzten Stunde), Datenqualität ≥ 60, Plausibilität ≥ 10, keine veralteten Preise.
-- **Volumen 24 h** (schwächere Seite, weil Kauf und Verkauf gefüllt werden müssen): ≥ Mindeststückzahl (Standard 500) und ≥ x-fache empfohlene Menge (Standard 10×). Reicht das Volumen nicht für die volle Menge, wird sie auf ⌊Volumen ÷ x⌋ reduziert.
+- Voraussetzungen: positive Marge (letzte Beobachtung **und** konservativ, d. h. mit Ø-Preisen der letzten Stunde und 30-Tage-Begrenzung), Datenqualität ≥ 60, Plausibilität ≥ 10, keine veralteten Preise, kein Ausschluss durch den 30-Tage-Abgleich (Spitze, Spitze bei wiederkehrenden Spitzen, Absturz, sprunghaft, wenig Historie).
+- **Volumen** (schwächere Seite, weil Kauf und Verkauf gefüllt werden müssen; kleineres aus 24 h und normalem Tag der letzten 30 Tage): ≥ Mindeststückzahl (Standard 500) und ≥ x-fache empfohlene Menge (Standard 10×). Reicht das Volumen nicht für die volle Menge, wird sie auf ⌊Volumen ÷ x⌋ reduziert.
+- **Kauflimit:** Items, deren 4-h-Limit durch eigene erfasste Käufe/offene Angebote aufgebraucht ist, fallen weg; sonst begrenzt das Restlimit die Menge (siehe Abschnitt 13).
 - Gewinn = Menge × min(Marge letzte Beobachtung, Marge mit Ø-Preisen). Sortierung: Ranking (Standard), Gewinn pro Flip oder ROI; Tiebreaker Gewinn, dann Item-ID.
 
 ### High Value (Tab auf derselben Seite)
@@ -134,3 +176,10 @@ Alle Strategien setzen voraus: positive Marge (letzte und konservative), Qualit�
 - „Trade“ = ein Kauf bis zum GE-Limit (4 h) bzw. bis zur durch Kapital/Volumen begrenzten Menge.
 - Erreichen weniger als 10 Items den Mindestgewinn, werden bis zu 5 Items „knapp darunter“ separat angezeigt.
 - Beobachtung am 26.10.2026: Mit 100M gp pro Trade erreichen nur wenige Items 2M gp konservativen Gewinn; mit 10M gp keines.
+
+## 13. Kauflimit-Tracker (`portfolio/buy-limit.ts`)
+
+- Regel laut OSRS Wiki: Das GE-Kauflimit gilt pro Item für **4 h ab dem ersten Kauf**. Alle Käufe in diesem Fenster zählen; danach ist das volle Limit wieder verfügbar, der nächste Kauf startet ein neues Fenster.
+- Verbraucht = gefüllte Kaufchargen im aktuellen Fenster (nach erfasstem Kaufdatum) + offene Kaufangebote (verbrauchen das Limit beim Füllen). Kaufdaten in der Zukunft zählen erst ab Erreichen.
+- Scanner und Top 10: Menge = min(⌊Kapital ÷ Kauf⌋, Limit − verbraucht). „Potenzial pro Limit“ bleibt auf das volle Limit bezogen.
+- Anzeige: Dashboard-Karte „Buy limits (4 h)“ (Restlimit, Reset-Zeitpunkt), Item-Seite, Top-10-Karten und Scanner-Spalte „Qty / limit“.

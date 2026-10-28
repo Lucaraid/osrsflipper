@@ -24,6 +24,9 @@ class FixtureSource implements MarketSource {
   async oneHour(ts?: number) {
     return (await this.mod).fixture1h(Date.now(), ts);
   }
+  async oneDay(ts: number) {
+    return (await this.mod).fixture24h(Date.now(), ts);
+  }
   async timeseries(id: number, lookback: Lookback) {
     return (await this.mod).fixtureTimeseries(Date.now(), id, lookback);
   }
@@ -32,7 +35,8 @@ class FixtureSource implements MarketSource {
 const g = globalThis as unknown as { __marketService?: MarketService };
 
 export function getMarketService(): MarketService {
-  if (!g.__marketService) {
+  // instanceof: nach Hot-Reload (neue Klassendefinition) eine frische Instanz anlegen
+  if (!(g.__marketService instanceof MarketService)) {
     const source: MarketSource =
       process.env.MARKET_DATA_SOURCE === "fixtures"
         ? new FixtureSource()
