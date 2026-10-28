@@ -182,3 +182,4 @@ Alternativ läuft die App auf jeder Node-Plattform mit `npm run build && npm sta
 
 Maintainer: @claude, @froschtv
 Chef: @lucaraid
+Creator of World grrr: @mertinio
