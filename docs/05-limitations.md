@@ -13,13 +13,15 @@
 | Clientseitige Analyse | Scanner, Qualität und Risiko im Browser | Der Server liefert einen kompakten Snapshot. Kapital, Filter und Einstellungen wirken ohne erneuten Serveraufruf. |
 | Kategorien | heuristisch nach Item-Namen | Die API liefert keine Kategorien. In der UI ist die Kategorie als „heuristisch“ gekennzeichnet. |
 | Offset 1 gp | Über-/Unterbieten der letzten Preise | Übliche Flip-Konvention, einstellbar. |
-| 24h-Fenster | 24 abgeschlossene `/1h`-Blöcke | Es gibt in v2 keinen `/24h`-Endpunkt. Die Blöcke sind unveränderlich und daher gut cachebar. |
+| 24h-Fenster | 24 abgeschlossene `/1h`-Blöcke | Rollendes Fenster bis zur letzten vollen Stunde. Die Blöcke sind unveränderlich und daher gut cachebar. |
+| 30-Tage-Grundlinie | 30 abgeschlossene `/24h`-Tagesblöcke | Bulk für alle Items (30 Abrufe statt ~4'500 `/timeseries`-Abrufe). Tagesmittel glätten Ausschläge innerhalb eines Tages; diese erfasst weiterhin die 24h-Prüfung. |
 
 ## Bekannte Einschränkungen (datenbedingt)
 
 - **Keine ausführbaren Preise:** Die API liefert letzte Transaktionen und Durchschnitte, kein Orderbuch. Margen sind Schätzungen. Ob ein Gebot gefüllt wird, ist nicht vorhersagbar.
 - **Kauflimits:** `mapping.limit` fehlt bei ca. 520 Items (bei 2 ist es 0). Diese Items gelten als „Limit nicht verfügbar“. Das 4-Stunden-Fenster wird aus den **im Tracker erfassten** Käufen und offenen Angeboten berechnet (`src/lib/portfolio/buy-limit.ts`). Käufe, die nicht erfasst sind, kennt die App nicht; massgebend ist das erfasste Kaufdatum, nicht der genaue Zeitpunkt im Spiel.
-- **Historische Stichprobe:** Daten vor dem 30.09.2026 stammen laut Wiki nur von RuneLite-Nutzern.
+- **Historische Stichprobe:** Daten vor dem 30.09.2026 stammen laut Wiki nur von RuneLite-Nutzern. Das normale Tagesvolumen der 30-Tage-Grundlinie verwendet deshalb nur Tage ab diesem Datum.
+- **30-Tage-Abgleich:** Schwellen sind an einem Stichtag kalibriert (27.10.2026) und keine Prognose. Ein Trend der letzten 7 Tage kann jederzeit drehen; Items ohne Ausschluss sind nicht „sicher“.
 - **Zeitreihen-Auflösung:** Die Schrittweite von `/timeseries` ist laut Doku nicht garantiert. Sie wird angezeigt und nie angenommen. Beobachtet: 6h/24h → 5 min, 7d → 1 h, 30d → 6 h, 6m/1y → 1 Tag.
 - **Steuerausnahmen:** Spiel-Updates können die Liste ändern. Sie ist zentral in `src/lib/tax/rules.ts` gepflegt (Stand 24.10.2026, `verifiedAt`).
 - **Alte Angebote mit 1 % Steuer** (vor dem 29.05.2025 eingestellt) werden nicht modelliert. Für neue Trades ist das irrelevant. Beim RuneLite-Import zählt das Verkaufsdatum.

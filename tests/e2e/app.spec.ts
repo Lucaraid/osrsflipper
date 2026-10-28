@@ -398,3 +398,28 @@ test("Import aus RuneLite (Flipping Utilities): Vorschau, Import, erneuter Impor
   await expect(page.getByTestId("fu-summary")).toContainText("2 already imported (hidden)");
   await expect(page.getByTestId("fu-confirm")).toBeDisabled();
 });
+
+test("30-Tage-Abgleich: Grundlinie geladen, Preisspitze markiert, Top 10 zeigt 30-Tage-Zeile", async ({ page, request }) => {
+  const res = await request.get("/api/history");
+  expect(res.status()).toBe(200);
+  const h = await res.json();
+  expect(h.meta.source).toBe("fixtures");
+  expect(h.meta.daysLoaded).toBe(30);
+  expect(h.items["4151"].days).toBe(30);
+  // Testitem 4151 hat in der letzten Stunde einen synthetischen Anstieg von 25 %
+  await openApp(page, "/items/4151");
+  await expect(page.getByTestId("item-history-check")).toContainText("Price spike");
+  await openApp(page, "/top");
+  await expect(page.getByTestId("top-pick").first().getByTestId("history-summary")).toContainText("30 d:");
+  await expect(page.getByTestId("top-list")).not.toContainText("Abyssal whip");
+  // Sprunghaftes Item (Coal) fehlt in Standard, steht im Tab „Volatile“ mit Warnung
+  await expect(page.getByTestId("top-list")).not.toContainText("Coal");
+  await page.getByTestId("tab-volatile").click();
+  const coal = page.getByTestId("vol-list").getByTestId("top-pick").filter({ hasText: "Coal" });
+  await expect(coal.getByTestId("vol-flag")).toContainText("Erratic");
+  await expect(coal.getByTestId("vol-downside")).toContainText("typical daily swing");
+  // Filter nach Grund
+  await page.getByTestId("vol-flag-erratic").click();
+  await expect(page.getByTestId("vol-flag-erratic")).toHaveAttribute("aria-pressed", "true");
+  await expect(coal).toBeVisible();
+});

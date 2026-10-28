@@ -70,7 +70,11 @@ export function SearchCommand() {
               onKeyDown={(e) => {
                 if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(a + 1, results.length - 1)); }
                 if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
-                if (e.key === "Enter" && results[active]) go(results[active].id);
+                if (e.key === "Enter") {
+                  // Die angezeigte Liste kann noch zur vorherigen Eingabe gehören (useDeferredValue) → für Enter aktuell suchen
+                  const hit = deferred === q ? results[active] : searchItems(index, q, 1)[0];
+                  if (hit) go(hit.id);
+                }
               }}
               placeholder="Name or item ID…"
               className="h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-faint"

@@ -1,16 +1,19 @@
 import { aggregateDay } from "./aggregate";
 import { TtlCache, type CacheResult } from "./cache";
+import { aggregateMonth, HISTORY_DAYS, type DayBlock } from "./history";
 import { parseBlock, parseLatest, parseMapping, parseTimeseries } from "./parse";
 import type { MarketSource } from "./sources";
 import type {
   BlockAgg,
   DayAgg,
+  HistoryResponse,
   ItemMeta,
   ItemsResponse,
   LatestEntry,
   Lookback,
   MarketRow,
   MarketSnapshot,
+  MonthAgg,
   TimeseriesResponse,
 } from "./types";
 
@@ -22,6 +25,7 @@ export const TTL = {
   oneHour: 5 * 60_000,
   hourBlock: 26 * 60 * 60_000, // abgeschlossene Stundenblöcke sind unveränderlich
   snapshot: 20_000,
+  dayBlock: 32 * 24 * 60 * 60_000, // abgeschlossene Tage sind unveränderlich
   timeseries: { "6h": 60_000, "24h": 120_000, "7d": 10 * 60_000, "30d": 30 * 60_000, "6m": 60 * 60_000, "1y": 60 * 60_000 } as Record<Lookback, number>,
 } as const;
 
@@ -33,13 +37,20 @@ function msg(err: unknown): string {
 
 export class MarketService {
   private dayLoad: Promise<void> | null = null;
+  private monthLoad: Promise<void> | null = null;
+  /** Eigener Cache für die 30 Tagesblöcke, damit Zeitreihen-Abrufe sie nicht verdrängen */
+  private readonly dayCache: TtlCache;
+  private historyMemo: { key: string; value: HistoryResponse } | null = null;
 
   constructor(
     private readonly source: MarketSource,
     private readonly cache = new TtlCache(120),
     private readonly now: () => number = Date.now,
     private readonly dayWaitMs = 4_000,
-  ) {}
+    private readonly historyWaitMs = 8_000,
+  ) {
+    this.dayCache = new TtlCache(HISTORY_DAYS + 5, now);
+  }
 
   get sourceKind() {
     return this.source.kind;
@@ -162,6 +173,74 @@ export class MarketService {
       },
       rows,
     };
+  }
+
+  /** Mitternacht UTC (Unix-Sekunden) der letzten HISTORY_DAYS abgeschlossenen Tage, ältester zuerst. */
+  historyDays(): number[] {
+    const today = Math.floor(this.now() / 86_400_000) * 86_400;
+    return Array.from({ length: HISTORY_DAYS }, (_, i) => today - (HISTORY_DAYS - i) * 86_400);
+  }
+
+  private dayBlock(ts: number) {
+    return this.dayCache.get(`24h:${ts}`, TTL.dayBlock, async () => {
+      const b = parseBlock(await this.source.oneDay(ts), "/24h");
+      // Noch nicht veröffentlichter Tag → nicht als leeren Block cachen
+      if (b.map.size === 0) throw new Error(`Day ${new Date(ts * 1000).toISOString().slice(0, 10)} not available yet`);
+      return { timestamp: ts, map: b.map };
+    });
+  }
+
+  /** Lädt fehlende Tagesblöcke im Hintergrund (läuft nach Ablauf der Wartezeit weiter). */
+  private ensureMonth(days: number[]): Promise<void> {
+    const missing = days.filter((ts) => {
+      const e = this.dayCache.peek(`24h:${ts}`);
+      return !e || e.lastError;
+    });
+    if (missing.length === 0) return Promise.resolve();
+    if (!this.monthLoad) {
+      // Jüngste Tage zuerst: Trend und 7-Tage-Median sind am wichtigsten
+      this.monthLoad = Promise.allSettled([...missing].reverse().map((ts) => this.dayBlock(ts))).then(() => {
+        this.monthLoad = null;
+      });
+    }
+    return this.monthLoad;
+  }
+
+  /**
+   * 30-Tage-Grundlinie aller Items. Liefert nach höchstens `historyWaitMs` auch einen Teilstand
+   * (meta.daysLoaded < daysExpected); der Client fragt dann häufiger nach.
+   */
+  async getHistory(): Promise<HistoryResponse> {
+    const days = this.historyDays();
+    const load = this.ensureMonth(days);
+    await Promise.race([load, new Promise((r) => setTimeout(r, this.historyWaitMs))]);
+
+    const blocks: DayBlock[] = [];
+    let error: string | null = null;
+    for (const ts of days) {
+      const e = this.dayCache.peek<DayBlock>(`24h:${ts}`);
+      if (e && !e.lastError) blocks.push(e.value);
+      else if (e?.lastError && ts < (days[days.length - 1] ?? 0)) error = e.lastError;
+    }
+    const key = blocks.map((b) => b.timestamp).join(",");
+    if (this.historyMemo?.key === key) return { ...this.historyMemo.value, meta: { ...this.historyMemo.value.meta, error } };
+
+    const items: Record<string, MonthAgg> = {};
+    for (const [id, agg] of aggregateMonth(blocks)) items[id] = agg;
+    const value: HistoryResponse = {
+      meta: {
+        source: this.source.kind,
+        generatedAt: this.now(),
+        daysLoaded: blocks.length,
+        daysExpected: days.length,
+        from: blocks[0]?.timestamp ?? null,
+        to: blocks.length > 0 ? (blocks[blocks.length - 1] as DayBlock).timestamp + 86_400 : null,
+        error,
+      },
+      items,
+    };
+    this.historyMemo = { key, value };
+    return value;
   }
 
   async getTimeseries(id: number, lookback: Lookback): Promise<TimeseriesResponse> {

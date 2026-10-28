@@ -11,6 +11,8 @@ export interface MarketSource {
   latest(): Promise<unknown>;
   fiveMin(): Promise<unknown>;
   oneHour(timestamp?: number): Promise<unknown>;
+  /** Tagesblock 00:00–24:00 UTC; `timestamp` muss auf Mitternacht UTC fallen. */
+  oneDay(timestamp: number): Promise<unknown>;
   timeseries(id: number, lookback: Lookback): Promise<unknown>;
 }
 
@@ -28,6 +30,9 @@ export class WikiSource implements MarketSource {
   }
   oneHour(timestamp?: number) {
     return this.client.getJson(timestamp ? `/1h?timestamp=${Math.floor(timestamp)}` : "/1h");
+  }
+  oneDay(timestamp: number) {
+    return this.client.getJson(`/24h?timestamp=${Math.floor(timestamp)}`, { timeoutMs: 20_000 });
   }
   timeseries(id: number, lookback: Lookback) {
     return this.client.getJson(`/timeseries?id=${Math.floor(id)}&lookback=${encodeURIComponent(lookback)}`);
