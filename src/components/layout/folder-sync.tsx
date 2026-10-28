@@ -19,14 +19,33 @@ export function FolderSync() {
   const conflict = useFolderStore((s) => s.conflict);
   const resolve = useFolderStore((s) => s.resolveConflict);
   const folderName = useFolderStore((s) => s.folderName);
+  const status = useFolderStore((s) => s.status);
 
   useEffect(() => {
     if (!loaded) return;
     void useFolderStore.getState().init();
   }, [loaded]);
 
+  // Nach einem Browser-Neustart braucht Chrome eine Bestätigung für den Ordnerzugriff, die nur bei
+  // einer Nutzeraktion angefragt werden darf → beim ersten Klick/Tastendruck automatisch nachfragen (einmal pro Sitzung).
+  useEffect(() => {
+    if (status !== "needs-permission") return;
+    const ask = () => {
+      window.removeEventListener("pointerdown", ask, true);
+      window.removeEventListener("keydown", ask, true);
+      void useFolderStore.getState().reconnect();
+    };
+    window.addEventListener("pointerdown", ask, true);
+    window.addEventListener("keydown", ask, true);
+    return () => {
+      window.removeEventListener("pointerdown", ask, true);
+      window.removeEventListener("keydown", ask, true);
+    };
+  }, [status]);
+
   useEffect(() => {
     const unsubData = useDataStore.subscribe((s, p) => {
+      if (!p.loaded) return; // erstes Laden aus dem Browser-Speicher ist keine Änderung
       if (s.trades !== p.trades || s.capital !== p.capital || s.watchlist !== p.watchlist || s.alerts !== p.alerts || s.alertEvents !== p.alertEvents) {
         useFolderStore.getState().scheduleSave();
       }
@@ -35,11 +54,19 @@ export function FolderSync() {
       if (s.settings !== p.settings && p.hydrated) useFolderStore.getState().scheduleSave();
     });
     const onFocus = () => void useFolderStore.getState().checkExternalChange();
+    // Beim Verlassen/Verstecken des Tabs ausstehende Änderungen sofort schreiben (best effort)
+    const onHide = () => {
+      if (document.visibilityState === "hidden") void useFolderStore.getState().flush();
+    };
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
     return () => {
       unsubData();
       unsubSettings();
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
     };
   }, []);
 

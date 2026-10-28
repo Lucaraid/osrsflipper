@@ -38,6 +38,8 @@ interface FolderState {
   resolveConflict: (keep: "folder" | "local") => Promise<void>;
   scheduleSave: () => void;
   saveNow: () => Promise<void>;
+  /** Ausstehende (geplante) Speicherung sofort ausführen */
+  flush: () => Promise<void>;
   checkExternalChange: () => Promise<void>;
 }
 
@@ -45,6 +47,20 @@ let handle: DirHandle | null = null;
 let suppress = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let knownModified = 0;
+/** Es gibt Änderungen, die noch nicht im Ordner gespeichert sind (z. B. weil der Zugriff nach einem Neustart fehlte) */
+let dirty = false;
+/** Während eines Schreibvorgangs kam eine weitere Änderung → danach direkt nochmals speichern */
+let pendingSave = false;
+
+/** Nur für Tests: Modulzustand zurücksetzen */
+export function _resetFolderStateForTests(h: DirHandle | null = null) {
+  handle = h;
+  dirty = false;
+  pendingSave = false;
+  suppress = false;
+  if (timer) clearTimeout(timer);
+  timer = null;
+}
 
 function currentBackup(): Backup {
   const d = useDataStore.getState();
@@ -166,25 +182,50 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     }
   },
 
+  /**
+   * Nach jeder Änderung aufgerufen. Mit verbundenem Ordner wird kurz danach gespeichert
+   * (auch nach einem fehlgeschlagenen Versuch erneut). Fehlt der Zugriff, bleibt die Änderung
+   * als „dirty“ vorgemerkt und wird gespeichert, sobald der Zugriff wieder erlaubt ist.
+   */
   scheduleSave: () => {
-    if (suppress || get().status !== "connected" || get().conflict) return;
+    if (suppress) return;
+    dirty = true;
+    const { status, conflict } = get();
+    if (!handle || conflict || (status !== "connected" && status !== "error")) return;
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void get().saveNow(), 400);
+    timer = setTimeout(() => void get().saveNow(), 150);
   },
 
   saveNow: async () => {
     if (!handle || get().conflict) return;
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (get().saving) {
+      pendingSave = true;
+      return;
+    }
     set({ saving: true });
     try {
+      dirty = false;
       await writeFolderData(handle, currentBackup());
       knownModified = (await fileLastModified(handle)) ?? Date.now();
       set({ saving: false, lastSavedAt: Date.now(), lastError: null, status: "connected" });
+      if (pendingSave) {
+        pendingSave = false;
+        await get().saveNow();
+      }
     } catch (err) {
+      dirty = true;
+      pendingSave = false;
       const msg = errMsg(err);
       const perm = /permission|NotAllowed/i.test(msg) || (err as DOMException)?.name === "NotAllowedError";
       set({ saving: false, lastError: `Saving to the folder failed: ${msg}`, status: perm ? "needs-permission" : "error" });
       toast("Saving to the folder failed – data is still safe in the browser.", "neg");
     }
+  },
+
+  flush: async () => {
+    if (timer && get().status === "connected") await get().saveNow();
   },
 
   /** Wurde die Datei ausserhalb der App geändert (z. B. anderes Gerät via Cloud-Ordner), neu laden. */
@@ -208,6 +249,9 @@ async function syncFromFolder(set: (p: Partial<FolderState>) => void) {
     }
     if (r.kind === "ok") {
       knownModified = r.lastModified;
+      // Ungespeicherte Änderungen aus diesem Browser nie stillschweigend überschreiben
+      if (dirty && !sameData(r.backup, currentBackup())) return set({ status: "connected", lastError: null, conflict: { backup: r.backup } });
+      dirty = false;
       await applyBackup(r.backup);
       return set({ status: "connected", lastSavedAt: r.lastModified, lastError: null });
     }
