@@ -179,3 +179,6 @@ Alternativ läuft die App auf jeder Node-Plattform mit `npm run build && npm sta
 - [`docs/04-deployment.md`](docs/04-deployment.md): Deployment-Anleitung und Go-Live-Checkliste
 - [`docs/05-limitations.md`](docs/05-limitations.md): Annahmen, Einschränkungen, mögliche Erweiterungen
 - In der App: `/methodik` und `/datenschutz`
+
+Maintainer: @claude, @froschtv
+Chef: @lucaraid
