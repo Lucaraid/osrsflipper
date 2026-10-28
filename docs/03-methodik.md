@@ -24,6 +24,7 @@ Es gibt kein öffentliches Orderbuch. Aus letzten Transaktionspreisen werden kei
 - 48 befreite Items als ID-Liste (`TAX_EXEMPT_ITEMS`), am 24.10.2026 gegen `/mapping` aufgelöst.
 - Steuer auf eine Menge = Steuer pro Stück × Menge (nicht auf den Gesamtbetrag).
 - Wurde bei einem eigenen Trade die tatsächliche Steuer erfasst, ersetzt sie die berechnete.
+- **Frühere Sätze** (`taxRulesAt`, nur für importierte historische Verkäufe): vor dem 09.12.2021 keine Steuer, 09.12.2021–28.05.2025 **1 %** (gleiche Obergrenze), danach die aktuellen Regeln. Für die 1-%-Periode gilt die aktuelle Ausnahmeliste (damals kürzer → für die 2025 neu befreiten Items leicht unterschätzt).
 
 Referenzfälle aus den Tests: 49 → 0 · 50 → 1 · 99 → 1 · 100 → 2 · 1'234'567 → 24'691 · 249'999'999 → 4'999'999 · 250'000'000 → 5'000'000 · Bond 9M → 0.
 
@@ -120,6 +121,15 @@ Alle Strategien setzen voraus: positive Marge (letzte und konservative), Qualit�
 - Portfolio: `Cash = Σ Kapital − Σ Käufe + Σ Netto-Erlöse` · `Verfügbar = Cash − Reserviert (offene Angebote)` · `Gebunden = Σ offener Einstand` · `Marktwert (gesch.) = Σ offene Menge × (letzter Instant-Sell − Steuer)` (ohne Preis zum Einstand) · `Gesamtwert = Cash + Marktwert`.
 - Invariante (getestet): `Gesamtwert = Σ Kapital + Realisiert + Unrealisiert`.
 - Kapitalverlauf: ausschliesslich aus Transaktionen (Buchwert = Cash + Einstand), ohne Marktpreisschätzung.
+
+### Import aus RuneLite (Flipping Utilities, `src/lib/import/flipping-utilities.ts`)
+
+- CSV-Export des Plugins: `name,date,quantity,price,state`, Datum in Ortszeit, Preis pro Stück. `CANCELLED_BUY/SELL` = gefüllter Teil eines abgebrochenen Angebots, zählt wie ein Kauf/Verkauf (so ergibt sich auch der vom Plugin ausgewiesene Gewinn).
+- Item-Zuordnung über den exakten Namen im `/mapping` (Gross-/Kleinschreibung egal); unbekannte oder mehrdeutige Namen werden übersprungen und angezeigt.
+- Flips pro Item chronologisch: Kauf ohne Bestand startet einen Trade, Verkäufe bis Bestand 0 schliessen ihn. Verkäufe ohne GE-Kauf (Drops, Skilling) werden übersprungen. Zeilen derselben Minute behalten die CSV-Reihenfolge.
+- Steuer: Verkäufe vor dem 29.05.2025 erhalten die damals gültige Steuer als „tatsächliche Steuer“; neuere werden nach den aktuellen Regeln berechnet.
+- Erneuter Import: Käufe/Verkäufe mit gleichem Item, gleicher Minute, Menge und Preis gelten als vorhanden (auch manuell erfasste). Fehlende Zeilen ergänzen den bestehenden Trade; verteilen sich die Treffer auf mehrere Trades, wird nichts geändert („conflict“).
+- Vorauswahl: neue/ergänzte Flips; offene Positionen ohne Aktivität seit > 14 Tagen nicht (meist Verbrauchsmaterial). Standard-Zeitraum der Vorschau: 30 Tage.
 
 ## 12. Top 10 Käufe (`top.ts`)
 

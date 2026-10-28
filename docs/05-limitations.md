@@ -22,7 +22,8 @@
 - **Historische Stichprobe:** Daten vor dem 30.09.2026 stammen laut Wiki nur von RuneLite-Nutzern.
 - **Zeitreihen-Auflösung:** Die Schrittweite von `/timeseries` ist laut Doku nicht garantiert. Sie wird angezeigt und nie angenommen. Beobachtet: 6h/24h → 5 min, 7d → 1 h, 30d → 6 h, 6m/1y → 1 Tag.
 - **Steuerausnahmen:** Spiel-Updates können die Liste ändern. Sie ist zentral in `src/lib/tax/rules.ts` gepflegt (Stand 24.10.2026, `verifiedAt`).
-- **Alte Angebote mit 1 % Steuer** (vor dem 29.05.2025 eingestellt) werden nicht modelliert. Für neue Trades ist das irrelevant.
+- **Alte Angebote mit 1 % Steuer** (vor dem 29.05.2025 eingestellt) werden nicht modelliert. Für neue Trades ist das irrelevant. Beim RuneLite-Import zählt das Verkaufsdatum.
+- **RuneLite-Import:** Der Export von Flipping Utilities enthält keine Item-IDs und keine Zeitzone – Zuordnung über den Item-Namen, Zeit als Ortszeit. Umbenannte oder nicht mehr handelbare Items werden übersprungen. Ob ein GE-Kauf ein Flip oder Verbrauchsmaterial war, kann die App nicht wissen; deshalb die Vorschau mit Auswahl.
 
 ## Bewusst nicht implementiert
 
